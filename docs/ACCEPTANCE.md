@@ -838,32 +838,62 @@ counts, cohorts, gaps and private review procedure. No production behavior chang
 
 ## Phase 5 — Jev integration
 
+**Status: PASS — 2026-09-24. Automated Windows gates and real six-example Chinese
+TypeSafe smoke passed; no HUD or Phase 6 work.**
+
+Current evidence (D-032; details in [PHASE5_JEV.md](PHASE5_JEV.md)):
+
+- Live TypeSafe docs read 2026-09-24; HTTP v1/Bearer/shared-state contract recorded.
+- Static versioned `jev-v0.1`: five Noul, one ten-option Choice, two four-level Score.
+- 292 .NET tests passed, including 40 new TypeSafe tests; full Windows build passed
+  with zero warnings/errors. Existing Observer/OCR suites remain unchanged and green.
+- Fake-client tests prove trusted Remote LiveNew eligibility, repeated-frame dedupe,
+  distinct equal-text IDs, prior-only siblings, context budgets/Unicode/gaps, bounded
+  backpressure, stale late/queued result rejection, unavailable config and redaction.
+- Fake HTTP tests prove one eight-question payload, documented typed mapping, invalid
+  IDs/types/probabilities/legends/oversized/duplicate JSON rejection, timeout/cancellation,
+  401/403/429/529/network handling and no error-body leakage or retry storm.
+- The fake tests are deterministic failure/stale evidence. Separately, real smoke
+  passed after local key setup: six requests, eight questions each, model jev-1.13.0,
+  all successful typed answers. Chinese primary speech acts matched the six sample
+  functions; uncertain secondary judgments are retained without thresholds/tuning.
+- First HTTP call 1420.95 ms; subsequent calls median 409.18 ms, range 385.47–500.99.
+  All-six burst total-semantic median 2500.67 ms includes queue wait. Payload/usage,
+  per-stage timing and qualitative review are recorded in PHASE5_JEV.md.
+- This is NOT a new real-WeChat end-to-end manual semantic run. No private personal
+  conversation was uploaded for smoke; no OCR benchmark or Phase 4.5 research.
+- Automated, real-smoke and failure/stale gates permit PR readiness. No key is in
+  repository/log output; detailed numeric smoke evidence stays under `.ocr-cache`.
+
 ### Goal
 
 Turn normalized message + short recent context into typed probabilistic judgments.
 
 ### Preconditions
 
-- [ ] Official TypeSafe skill is installed.
-- [ ] Codex has re-read current live docs (`llms.txt`, API/SDK, state, primitives, confidence, relevant cookbook/pattern).
-- [ ] Current API contract is implemented from live docs, not from this handoff.
+- [x] Official TypeSafe skill is installed.
+- [x] Codex has re-read current live docs (`llms.txt`, API/SDK, state, primitives, confidence, relevant cookbook/pattern).
+- [x] Current API contract is implemented from live docs, not from this handoff.
 
 ### Acceptance
 
-- [ ] API key is loaded from local secret/environment, never repository content.
-- [ ] Jev client is isolated behind an interface.
-- [ ] Multiple independent judgments over the same state are batched/parallelized according to current TypeSafe guidance where appropriate.
-- [ ] Initial set includes at least:
+- [x] API key is loaded from local secret/environment, never repository content.
+- [x] Jev client is isolated behind an interface.
+- [x] Multiple independent judgments over the same state are batched according to current TypeSafe guidance (fake transport verified; real gate below).
+- [x] Initial set includes at least:
   - expects response (Noul)
   - depends on prior context (Noul)
   - direct request (Noul)
   - speech act (Choice)
   - urgency or emotional intensity (Score)
-- [ ] Raw probabilities/confidence are retained.
-- [ ] `other`/no-match handling exists for bounded choices where needed.
-- [ ] Jev outage/timeout does not crash or block the capture loop.
-- [ ] API payload contains only the recent context needed for the question set.
-- [ ] `jev_ms` is measured.
+- [x] Raw probabilities/confidence are retained in distinct typed fields.
+- [x] `other`/no-match handling exists for bounded choices where needed.
+- [x] Jev outage/timeout isolation is tested without blocking observation submission.
+- [x] API payload contains bounded trusted same-epoch prior-only context.
+- [x] Old-epoch queued and in-flight results cannot publish into the new epoch.
+- [x] Timing/payload/token counters are instrumented without raw chat persistence.
+- [x] Real Chinese eight-question batched TypeSafe smoke succeeds.
+- [x] Real latency, payload sizes, usage and qualitative judgment review recorded.
 
 ### Semantic quality
 

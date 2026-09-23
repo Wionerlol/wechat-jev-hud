@@ -12,5 +12,6 @@
     <ProjectReference Include="..\WeChatJevHud.Ocr.Windows\WeChatJevHud.Ocr.Windows.csproj" />
     <ProjectReference Include="..\WeChatJevHud.Ocr.Tesseract\WeChatJevHud.Ocr.Tesseract.csproj" />
     <ProjectReference Include="..\WeChatJevHud.Observer\WeChatJevHud.Observer.csproj" />
+    <ProjectReference Include="..\WeChatJevHud.TypeSafe\WeChatJevHud.TypeSafe.csproj" />
   </ItemGroup>
 </Project>

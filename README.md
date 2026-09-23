@@ -1,7 +1,14 @@
 # WeChat × Jev Conversation HUD
 
 This checkout implements accepted Phases 0–4 and **Phase 4.5 PASS for V0** production
-OCR runtime. It does not implement Phase 5 Jev calls or the HUD overlay.
+OCR runtime and **Phase 5 PASS** Jev integration (automated gates plus real synthetic
+Chinese TypeSafe smoke). The Phase 6 HUD is not implemented.
+
+Phase 5: [API contract, architecture, tests and setup](docs/PHASE5_JEV.md).
+Run `.\scripts\jev-smoke.ps1` for six non-sensitive Chinese examples after configuring
+`TYPESAFE_API_KEY` locally. `.\scripts\observe.ps1 -Jev` explicitly enables sending only
+trusted Remote LiveNew text plus bounded prior trusted context. Without `-Jev`, the
+observer makes no TypeSafe calls. Never paste keys into chat or commit them.
 
 Phase 4.5B research is frozen by D-028: 119/124 distinct reviewed crops were literally
 exact; all five non-exact outputs were human-labelled semantically equivalent. V0

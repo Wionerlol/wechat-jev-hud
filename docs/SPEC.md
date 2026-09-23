@@ -721,6 +721,36 @@ must not be treated as semantic-ready by later phases.
 
 ## 12. TypeSafe / Jev integration
 
+Phase 5 implementation contract (D-032):
+
+- `WeChatJevHud.TypeSafe` owns the replaceable `ITypeSafeClient`, application-facing
+  `IConversationJudgmentService`, context builder, static question set and bounded
+  asynchronous coordinator. External JSON shapes stay inside this module, not Core.
+  Observer is unchanged and has no TypeSafe dependency.
+- After reconciliation, the composition root passes the chronological snapshot and
+  NEW targets. Only trusted Remote LiveNew in the active epoch can schedule analysis.
+  Self/History/Bootstrap/uncertain/edge/incomplete/fallback/stale targets never call Jev.
+- Same-epoch, prior-only trusted context: latest 8 messages by default, at most 2,000
+  Unicode scalars across target+context. Trim whole older messages, never split the
+  target; omit untrusted text and mark gaps. Independent quote trust is unavailable,
+  so quoted text is not uploaded merely because main text is trusted.
+- Eight `jev-v0.1` judgments share one state and one HTTP request. Noul yes probability,
+  Choice distribution/confidence and Score mean/legend/distribution/confidence remain
+  distinct immutable typed fields. No display thresholds or reply generation.
+- SHA-256 over exact deterministic state plus epoch/ID/version forms in-memory dedupe.
+  One background consumer uses a bounded Channel; no network wait in perception.
+  Epoch changes cancel/drop stale work and clear prior results. Results carry epoch tags.
+- Missing key, auth, rate limiting, malformed output, timeout and service failure are
+  explicit unavailable statuses, not default judgments. No automatic retries. Default
+  diagnostics never include chat payloads, keys or external exception/error bodies.
+- `observe.ps1 -Jev` is explicit upload opt-in; `jev-smoke.ps1` uses only synthetic
+  non-sensitive Chinese conversations. No persistence or HUD is added.
+
+The exact consulted live docs, HTTP contract, budgets/caps, commands, validation and
+known limitations are in [PHASE5_JEV.md](PHASE5_JEV.md). Real API acceptance passed on
+six synthetic Chinese conversations. Failure/stale behavior is deterministic fake-client
+evidence, not a deliberately induced real outage or fresh WeChat-to-Jev live run.
+
 ### Skill and docs
 
 Before coding, install:
@@ -729,7 +759,9 @@ Before coding, install:
 npx skills add typesafe-ai/skills --skill typesafe-ai
 ```
 
-Then read the live TypeSafe docs. The handoff intentionally does not freeze an API request schema because the official skill says current live docs are authoritative.
+Then read the live TypeSafe docs. The original handoff intentionally did not freeze an
+API schema. D-032 now records the live HTTP v1 contract read on 2026-09-24; future API
+changes must again consult current docs.
 
 ### Programming model
 

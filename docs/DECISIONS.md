@@ -882,3 +882,50 @@ Earlier real/automated evidence is retained, not represented as a new live run.
 Phase 4.5 is PASS for V0. Freeze append and history reconciliation, OCR extraction
 and trust; no more calibration/verifiers/heuristics. PR #5 becomes ready for external
 review, not automatically merged. Phase 5/Jev is a separate future task.
+
+## D-032 — Phase 5 observes trusted events through a bounded semantic module
+
+The user authorized Phase 5 after PR #5 merged. Phase 4.5 perception, trust, append,
+history, identity and accepted limitations remain frozen. No Phase 6 work.
+
+Read the installed TypeSafe skill and live docs on 2026-09-24. The exact consulted
+URLs and contract are recorded in [PHASE5_JEV.md](PHASE5_JEV.md): index, System One,
+build guide, State, Primitives, Noul, Choice, Score, Confidence, API, SDK/authentication,
+Models, fan-out and parallel-questions cookbook. The official SDK index lists no .NET
+SDK; choose C# HttpClient against `POST https://api.typesafe.ai/v1/systemone`, Bearer
+`TYPESAFE_API_KEY`, `jev-latest`, shared state and eight keyed questions.
+
+Question set `jev-v0.1` contains five observable-function Nouls, speech_act Choice,
+urgency and textual emotional_intensity Scores. Preserve documented distributions
+and primitive-specific meanings. No inferred motives, psychological labels, display
+thresholds or dynamic question generation.
+
+Context uses trusted same-epoch messages strictly before the target, at most eight
+prior messages / 2,000 text Unicode scalars by default, whole-message trimming, gaps
+recorded without uncertain text. No geometric/engine metadata. Quotes stay omitted
+until separately verified quote provenance exists; do not change Observer to invent it.
+
+Eligibility is Remote + LiveNew + existing IsTrustedForSemantics + active epoch.
+SHA-256 canonical state fingerprints plus epoch/ID/version dedupe in memory. A bounded
+background Channel never waits for network in perception. Old epoch work is cancelled
+or dropped, including late cancellation-ignoring completions. Result storage is bounded.
+Failures produce unavailable statuses, never fabricated outputs. No automatic retries;
+V0 elects abstention instead of the docs' optional rate-limit backoff/resubmission.
+
+Keys are process environment secrets, never logged. Explicit `-Jev` opt-in uploads
+minimal trusted text; default observer behavior does not upload. Diagnostics carry
+only IDs/counts/timings and typed judgments. No persistent semantic profiles or raw state.
+
+Automated Windows evidence: format/full build zero warnings/errors, 292 .NET tests
+passing (40 TypeSafe + unchanged 252 existing tests). After local credentials were
+configured, real Chinese smoke passed: 6 requests × 8 judgments, no failures/retries,
+actual model jev-1.13.0. First HTTP call 1420.95 ms; subsequent five median 409.18 ms
+(385.47–500.99). Six-at-once burst total-semantic median 2500.67 ms, max 3639.31 ms
+includes single-consumer queue wait. Full values and qualitative review are in
+PHASE5_JEV.md. No thresholds/prompts tuned from this small sample.
+
+Phase 5 is PASS for its typed integration gate; PR may leave Draft. This proves the
+real API with synthetic Chinese and failure/stale isolation with deterministic fakes,
+not a fresh live-WeChat-to-Jev manual run or universal semantic correctness. CJK
+accuracy limitations, bounded queue skips, alias movement, omitted unverified quotes
+and inherited V0 OCR risk remain explicit. Phase 6 is not implemented.

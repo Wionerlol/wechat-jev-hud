@@ -8,6 +8,10 @@ using WeChatJevHud.Ocr;
 using WeChatJevHud.Observer;
 using WeChatJevHud.Vision;
 using WeChatJevHud.Windows;
+using WeChatJevHud.TypeSafe;
+using WeChatJevHud.Diagnostics;
+
+if (args.Contains("--jev-smoke")) return await JevSmoke.RunAsync();
 
 var completenessAudit = OptionValue(args, "--completeness-audit");
 if (completenessAudit is not null)
@@ -718,6 +722,15 @@ static async Task<int> CollectOcrCalibrationAsync(
 
 static async Task<int> ObserveWeChatAsync(string[] arguments)
 {
+    using var jevHttp = TypeSafeHttpClient.CreateHttpClient();
+    await using var jev = arguments.Contains("--jev")
+        ? new JevAnalysisCoordinator(new ConversationJudgmentService(
+            new TypeSafeHttpClient(jevHttp, Environment.GetEnvironmentVariable("TYPESAFE_API_KEY"))))
+        : null;
+    if (jev is not null)
+        Console.WriteLine(string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("TYPESAFE_API_KEY"))
+            ? "[JEV] NotConfigured: set TYPESAFE_API_KEY in this Windows process; perception continues."
+            : "[JEV] enabled: trusted Remote LiveNew plus bounded prior context will be sent to TypeSafe; text is not logged.");
     var intervalMilliseconds = PositiveIntOption(arguments, "--interval-ms", 200)!.Value;
     var durationSeconds = PositiveIntOption(arguments, "--observe-seconds", null);
     var debugText = FindOption(arguments, "--debug-text") >= 0;
@@ -868,6 +881,14 @@ static async Task<int> ObserveWeChatAsync(string[] arguments)
                 {
                     var frame = capture.Capture(window);
                     var result = await observer.ObserveAsync(frame, cancellation.Token);
+                    if (jev is not null)
+                    {
+                        foreach (var status in jev.AcceptObservation(observer.State, result.NewMessages))
+                            if (status is not JevStatus.Queued and not JevStatus.SkippedNotEligible)
+                                Console.WriteLine($"[JEV] scheduling_status={status}");
+                        foreach (var analysis in jev.DrainResults())
+                            Console.WriteLine(JevDiagnosticFormatter.Format(analysis));
+                    }
                     if (result.FrameChanged && Environment.GetEnvironmentVariable("WECHAT_APPEND_TRACE") == "1")
                         Console.WriteLine("history_window_state=" + JsonSerializer.Serialize(new
                         {
@@ -964,6 +985,7 @@ static async Task<int> ObserveWeChatAsync(string[] arguments)
           (stableWindow.Elapsed.TotalMilliseconds * Environment.ProcessorCount) * 100
         : 0;
     PrintObserverCounters(observer.Counters);
+    if (jev is not null) Console.WriteLine("[JEV] counters=" + JsonSerializer.Serialize(jev.Counters));
     PrintProductionOcrCounters(productionOcrCounters.Snapshot, paddleWorker.RuntimeInfo);
     Console.WriteLine($"idle_window_frames={stableWindowUnchangedFrames}");
     Console.WriteLine($"idle_window_seconds={stableWindow.Elapsed.TotalSeconds:F2}");
