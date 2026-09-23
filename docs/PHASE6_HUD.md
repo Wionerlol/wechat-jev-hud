@@ -181,7 +181,14 @@ Initial Demo review confirmed card visibility, window-move following, Alt-Tab an
 minimize hiding/restoration, and uninterrupted typing focus. Initial monitor transition
 exposed conflated foreground/configuration evidence and a global failed-audit latch.
 The scoped state-machine correction has 6 additional deterministic cases (30 Overlay
-tests total). Actual 150% → 100% → 150% retest remains pending; no real Jev HUD test yet.
+tests total). On the corrected runtime (`afc8521`), the user confirmed automatic
+restoration after both monitor transitions, without restart. Native logs independently
+show DISPLAY5/96 DPI Verified (e.g. generation 6), followed by DISPLAY1/144 DPI
+Verified (generation 30), with further successful round trips. Positive control,
+RenderExcluded, DesktopExcluded, ForegroundPreserved, ConfigurationStable, styles
+and physical bounds all passed on those audits. No hard-failure latch occurred.
+Post-fix typing/Alt-Tab/minimize regression confirmation is still pending; the earlier
+pre-fix human checks must not be represented as a new post-fix run. No real Jev HUD test yet.
 Correction validation: Windows format/full build passed, zero warnings/errors;
 full .NET suite 322 passed, zero failed/skipped. Frozen perception/TypeSafe code unchanged.
 
