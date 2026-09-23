@@ -8,6 +8,9 @@ param(
 
     [switch]$DebugText,
 
+    # Explicit opt-in: uploads trusted Remote NEW + bounded trusted prior text to TypeSafe.
+    [switch]$Jev,
+
     [ValidateSet('cpu', 'gpu:0')]
     [string]$PaddleDevice = 'gpu:0',
 
@@ -34,6 +37,9 @@ if ($PSBoundParameters.ContainsKey('Seconds')) {
 }
 if ($DebugText) {
     $arguments += '--debug-text'
+}
+if ($Jev) {
+    $arguments += '--jev'
 }
 $arguments += @('--paddle-device', $PaddleDevice)
 if ($PSBoundParameters.ContainsKey('PaddlePython')) {
