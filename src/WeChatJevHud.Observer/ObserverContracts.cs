@@ -185,7 +185,8 @@ public sealed record ObservationResult(
 public sealed record OccurrenceMatchDiagnostic(string PreviousId, int PreviousY, int CandidateY,
     double EstimatedDeltaY, double MatchCost, int AmbiguousOccurrenceCount);
 
-public sealed record BubbleVisibilityDiagnostic(CapturePixelRect BubbleBounds, CapturePixelRect ChatRoi, bool IsFullyVisible);
+public sealed record BubbleVisibilityDiagnostic(CapturePixelRect BubbleBounds, CapturePixelRect ChatRoi, bool IsFullyVisible,
+    BubbleCompletenessEvidence? Completeness = null);
 
 public sealed class ConversationChangedEventArgs(
     ConversationEpoch? previousEpoch,

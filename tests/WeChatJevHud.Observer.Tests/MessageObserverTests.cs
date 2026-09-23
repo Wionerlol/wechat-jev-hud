@@ -9,6 +9,77 @@ namespace WeChatJevHud.Observer.Tests;
 
 public sealed class MessageObserverTests
 {
+    [Theory]
+    [InlineData(54)]
+    [InlineData(111)]
+    public async Task Complete_rounded_bottom_bubble_with_two_pixel_gap_still_emits_new(int height)
+    {
+        var roi = new CapturePixelRect(377, 120, 771, 421);
+        var anchor = new DetectedBubble(new(500, 250, 150, 54), MessageSide.Self, .94);
+        var appended = new DetectedBubble(new(650, 539 - height, 200, height), MessageSide.Self, .94);
+        var ocr = new StubOcrEngine(Ocr("anchor"), Ocr("complete new text"));
+        var observer = CreateObserver(new StubBubbleDetector([anchor], [anchor, appended]), ocr,
+            identityProvider: new StubConversationIdentityProvider(Identity(1)),
+            chatRegionLocator: new SequencedChatRegionLocator(roi));
+        await observer.ObserveAsync(BubbleCompletenessTests.Shapes(roi, (anchor.Bounds, 5)), default);
+        var result = await observer.ObserveAsync(BubbleCompletenessTests.Shapes(roi, (anchor.Bounds, 5), (appended.Bounds, 5)), default);
+        var message = Assert.Single(result.NewMessages);
+        Assert.True(message.IsFullyVisible);
+        Assert.Equal("complete new text", message.RawText);
+        Assert.Equal(2, ocr.Calls);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Two_pixel_gap_partial_recovers_same_id_and_never_replaces_complete_text(bool top)
+    {
+        var roi = new CapturePixelRect(377, 120, 771, 421);
+        var partial = new DetectedBubble(new CapturePixelRect(524, top ? 122 : 524, 300, 15), MessageSide.Self, .94);
+        var full = partial with { Bounds = new(524, top ? 160 : 280, 300, 111) };
+        var anchor = new DetectedBubble(new(420, top ? 200 : 400, 80, 54), MessageSide.Remote, .94);
+        var moved = anchor with { Bounds = anchor.Bounds with { Y = top ? 334 : 156 } };
+        var ocr = new StubOcrEngine(Ocr("anchor"), Ocr("complete multiline text"));
+        var observer = CreateObserver(new StubBubbleDetector([partial, anchor], [full, moved], [partial, anchor], [full, moved]), ocr,
+            chatRegionLocator: new SequencedChatRegionLocator(roi));
+        var partialFrame = Frame(1148, 680, 10, [(partial.Bounds, (byte)120), (anchor.Bounds, (byte)80)]);
+        var fullFrame = Frame(1148, 680, 10, [(full.Bounds, (byte)120), (moved.Bounds, (byte)80)]);
+        var initial = await observer.ObserveAsync(partialFrame, default);
+        var id = initial.MessagesObserved.Single(m => m.Side == MessageSide.Self).Id;
+        Assert.Equal(1, ocr.Calls);
+        var complete = await observer.ObserveAsync(fullFrame, default);
+        Assert.Empty(complete.NewMessages);
+        Assert.Equal("complete multiline text", observer.State.Messages.Single(m => m.Id == id).RawText);
+        await observer.ObserveAsync(partialFrame, default);
+        var clipped = observer.State.Messages.Single(m => m.Id == id);
+        Assert.False(clipped.IsFullyVisible);
+        Assert.False(clipped.IsTrustedForSemantics);
+        Assert.Equal("complete multiline text", clipped.RawText);
+        await observer.ObserveAsync(fullFrame, default);
+        Assert.True(observer.State.Messages.Single(m => m.Id == id).IsFullyVisible);
+        Assert.Equal(2, ocr.Calls);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Fifteen_pixel_fragment_two_pixels_from_boundary_never_calls_ocr(bool top)
+    {
+        var roi = new CapturePixelRect(377, 120, 771, 421);
+        var fragment = new DetectedBubble(new CapturePixelRect(524, top ? 122 : 524, 517, 15), MessageSide.Self, .94);
+        var ocr = new StubOcrEngine(Ocr("corrupted fragment"));
+        var observer = CreateObserver(new StubBubbleDetector([fragment]), ocr,
+            chatRegionLocator: new SequencedChatRegionLocator(roi));
+        var result = await observer.ObserveAsync(Frame(1148, 680, 10, [(fragment.Bounds, (byte)120)]), default);
+        Assert.Equal(0, ocr.Calls);
+        Assert.Empty(result.NewMessages);
+        var message = Assert.Single(observer.State.Messages);
+        Assert.False(message.IsFullyVisible);
+        Assert.False(message.HasCompleteText);
+        Assert.False(message.IsTrustedForSemantics);
+        Assert.Empty(message.RawText);
+    }
+
     [Fact]
     public async Task Dpi_rerender_then_idle_then_append_uses_visible_fingerprint_not_ocr_cache_fingerprint()
     {
@@ -364,7 +435,18 @@ public sealed class MessageObserverTests
         var original = await observer.ObserveAsync(Frame(10, [(old.Bounds, (byte)80)]), default);
         await observer.ObserveAsync(Frame(10, [(partial.Bounds, (byte)120)]), default);
         Assert.Equal(1, ocr.Calls);
-        var result = await observer.ObserveAsync(Frame(10, [(complete.Bounds, (byte)120)]), default);
+        // The complete near-top control must contain actual closed caps, not a flat
+        // rectangle indistinguishable from a clipped crop. Keep frame/layout unchanged.
+        var completeFrame = Frame(10, [(complete.Bounds, (byte)120)]);
+        for (var row = 0; row < 3; row++)
+        {
+            var inset = 3 - row;
+            completeFrame = CloneWithFill(completeFrame, new(complete.Bounds.X, complete.Bounds.Y + row, inset, 1), 0);
+            completeFrame = CloneWithFill(completeFrame, new(complete.Bounds.Right - inset, complete.Bounds.Y + row, inset, 1), 0);
+            completeFrame = CloneWithFill(completeFrame, new(complete.Bounds.X, complete.Bounds.Bottom - 1 - row, inset, 1), 0);
+            completeFrame = CloneWithFill(completeFrame, new(complete.Bounds.Right - inset, complete.Bounds.Bottom - 1 - row, inset, 1), 0);
+        }
+        var result = await observer.ObserveAsync(completeFrame, default);
         var visibleId = Assert.Single(observer.State.VisibleMessages).LogicalMessageId;
         Assert.NotEqual(original.MessagesObserved[0].Id, visibleId);
         Assert.Equal("newly discovered B", observer.State.Messages.Single(m => m.Id == visibleId).RawText);

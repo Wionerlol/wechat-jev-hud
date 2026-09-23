@@ -415,8 +415,11 @@ conservative history; pixel-identical sampled scroll/append
 ambiguities remain unobservable. `live_edge_append` diagnostics give the decision,
 previous retained start, new suffix start and translation without printing chat text.
 
-Bubble bounds touching/crossing the usable chat ROI top/bottom (scale-relative guard)
-are potentially partial. `IsFullyVisible` describes the current view and
+Bubble completeness uses frame-local nominal height, top/bottom distance and rounded
+background-cap evidence (D-026), not mere containment in the usable chat ROI.
+Near-boundary ambiguity is partial; closed full single/multiline shapes may still be
+complete near the bottom. Diagnostics expose distances, height ratio, boundary risk
+and completeness reason. `IsFullyVisible` describes the current view and
 `HasCompleteText` describes stored text evidence. Unknown partials retain empty
 placeholders, skip OCR and cannot become semantic-ready. Surviving-edge reconciliation
 requires a unique neighboring translation anchor; later full crops can complete the

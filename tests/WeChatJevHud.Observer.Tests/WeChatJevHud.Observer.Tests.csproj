@@ -15,4 +15,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\WeChatJevHud.Observer\WeChatJevHud.Observer.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\docs\assets\wechat-dark-layout-reference.png"
+          Link="Fixtures\wechat-dark-layout-reference.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

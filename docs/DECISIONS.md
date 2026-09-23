@@ -704,3 +704,25 @@ anchor or stationary growth they are not claimed NEW. Reliable arbitrary bottom-
 knowledge would require additional evidence, not more LCS thresholds. The earlier
 bottom-clipped multiline completeness bug is still a separate manual blocker; this
 change does not claim to fix completeness, OCR, trust or conversation identity.
+
+## D-026 — Visible completeness requires edge evidence, not containment
+
+The observed 15px historical fragment ended two pixels above the chat ROI boundary;
+the old one-pixel guard incorrectly allowed OCR. The detector intentionally retains
+small components for reconciliation (minimum height can be 12px); raising its global
+minimum would discard legitimate scale-dependent bubbles and is not the fix.
+
+Observer completeness now estimates nominal height from the smallest clearly interior
+bubble in the current frame. The boundary-risk band is 20% of that height (candidate
+height if unavailable). Near an edge, both rounded background caps must be closed to
+accept a full bubble; containment alone is insufficient. Touching/crossing is partial.
+Cap evidence compares dominant-background row widths over 12% of nominal height;
+short fragments below 75% of nominal receive an explicit suspicious-height reason.
+These are initial fixture-tested heuristics, not a calibrated universal classifier;
+the paired real scroll fixture and manual acceptance remain required.
+
+Evidence includes boundary distances, nominal/observed height, ratio, risk, cap checks
+and reason. Partials retain existing no-OCR/no-NEW/no-semantic-ready policy and cannot
+overwrite complete text. Surviving-edge association uses the nearer boundary even
+when clipping leaves a small apparent gap. D-025 append detection, identity, Unified
+extraction and trust are unchanged. No Phase 4.5 PASS is claimed.

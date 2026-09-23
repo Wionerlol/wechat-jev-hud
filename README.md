@@ -12,14 +12,22 @@ pending; this is not Phase 4.5 PASS. Run the actual worker evaluation with
 `python -m scripts.compare_production_unified --root .ocr-cache/phase4.5-paddle-bubble`
 to check the immutable benchmark parity. Reports remain private under `.ocr-cache`.
 
-Observer regression fix (D-024) is pending real-device acceptance: geometry-aware
-occurrence matching, title-ink identity evidence and explicit partial-crop handling.
+Observer regression fixes include geometry-aware occurrence matching and title-ink
+identity evidence; visible-completeness acceptance remains open.
 NEW detection now uses a separate live-edge append detector before history matching
 (D-025); inspect `live_edge_append` decisions. Ambiguous moving all-equal views remain
-suppressed. The observed bottom-clipped-history bug remains a separate open gate.
+suppressed. D-025's anchored repeated appends, scrolling and A→B→A are manually
+accepted. The bottom-clipped-history fix (D-026) uses scale/rounded-cap evidence and
+still needs the private clipped/full capture pair and real scroll regression.
 Extraction/trust calibration is unchanged. In `observe.ps1` diagnostics, inspect
 `occurrence`, `title_visual_distance`, and `bubble_visibility` records. Repeat Self
 and Remote equal-message appends, scroll away/back, A→B→A and clipped multiline history.
+
+Private completeness audit (Windows Diagnostics, opt-in screenshots, no OCR):
+`--completeness-audit live --output .ocr-cache/completeness/partial.json`.
+Repeat with `full.json` after manually revealing the same message. JSON records actual
+DPI, ROI, bounds and completeness evidence; PNGs remain private. File input is also
+supported; simulated boundary probes are explicitly labeled, not real scroll evidence.
 
 Optional private header audit (no OCR, no contact-name logging):
 

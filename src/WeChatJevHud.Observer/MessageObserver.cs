@@ -240,14 +240,15 @@ public sealed class MessageObserver : IMessageObserver
         _bubbleDetectionRuns++;
 
         var reconcileTimer = Stopwatch.StartNew();
+        var completeness = new BubbleCompletenessAnalyzer().Analyze(frame, _chatRegion.Value, bubbles);
         var candidates = bubbles
-            .Select(bubble => new VisibleCandidate(
+            .Select((bubble, index) => new VisibleCandidate(
                 bubble,
                 PixelFingerprint.ComputePerceptual(frame, bubble.Bounds).Signature,
-                IsComplete(bubble.Bounds, _chatRegion.Value),
+                completeness[index].IsFullyVisible,
                 PixelFingerprint.HashSampled(frame, bubble.Bounds, 8192, includeDimensions: true)))
             .ToArray();
-        _visibilityDiagnostics = candidates.Select(c => new BubbleVisibilityDiagnostic(c.Bubble.Bounds, _chatRegion.Value, c.IsFullyVisible)).ToArray();
+        _visibilityDiagnostics = candidates.Select((c, i) => new BubbleVisibilityDiagnostic(c.Bubble.Bounds, _chatRegion.Value, c.IsFullyVisible, completeness[i])).ToArray();
         _previousMatchRegion = previousChatRegion ?? _chatRegion.Value;
         var previousVisibleMessages = PreviousVisibleMessages();
         _appendDecision = _appendDetector.Detect(
@@ -648,12 +649,7 @@ public sealed class MessageObserver : IMessageObserver
             identityObservation);
     }
 
-    private static bool IsComplete(CapturePixelRect bubble, CapturePixelRect roi)
-    {
-        var margin = BoundaryMargin(roi);
-        return bubble.Y > roi.Y + margin && bubble.Bottom < roi.Bottom - margin;
-    }
-
+    // D-025 alignment tolerance only, not a completeness decision.
     private static int BoundaryMargin(CapturePixelRect roi) => Math.Max(1, roi.Height / 500);
 
     private static bool CanReuseText(ObservedMessage message, VisibleCandidate candidate) =>
@@ -695,8 +691,10 @@ public sealed class MessageObserver : IMessageObserver
         if (Math.Abs(a.Width * _geometryScale - b.Width) > tolerance ||
             Math.Abs(a.X * _geometryScale - b.X) > tolerance) return false;
         // Compare the surviving edge, not a clipped crop's perceptual hash or OCR.
-        var topClipped = !previous.IsFullyVisible && a.Y <= _previousMatchRegion.Y + BoundaryMargin(_previousMatchRegion) ||
-                         !candidate.IsFullyVisible && b.Y <= _chatRegion!.Value.Y + BoundaryMargin(_chatRegion.Value);
+        // Completeness can detect clipping despite a small gap from the ROI edge.
+        // For a classified partial, compare the surviving edge opposite its nearer boundary.
+        var topClipped = !previous.IsFullyVisible && a.Y - _previousMatchRegion.Y <= _previousMatchRegion.Bottom - a.Bottom ||
+                         !candidate.IsFullyVisible && b.Y - _chatRegion!.Value.Y <= _chatRegion.Value.Bottom - b.Bottom;
         return topClipped
             ? Math.Abs(a.Bottom * _geometryScale + _deltaY - b.Bottom) <= tolerance
             : Math.Abs(a.Y * _geometryScale + _deltaY - b.Y) <= tolerance;

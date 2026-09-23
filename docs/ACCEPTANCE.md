@@ -454,9 +454,12 @@ Phase 4 observation behavior. Trust calibration remains separate.
 - The old post-switch-settling append fixture made a visible prefix disappear without
   motion. It now retains that prefix to test a real extension; a separate regression
   explicitly rejects unexplained prefix disappearance, without weakening assertions.
-- Manual validation of this new detector remains pending. Repeat three Self and three
-  Remote equal appends, scrolling/return, resize/DPI followed by another append, and
-  A→B→A. All-equal moving views without an anchor remain ambiguous and suppressed.
+- D-025 manual evidence accepted by the user (2026-09-24): anchor4 plus five Self
+  repeats produced exactly six NEW events, with distinct IDs for all five repeats;
+  translated append used `anchored_translated_suffix`, deltaY=-84. Scrolling emitted
+  zero additional NEW; A→B→A advanced epochs 1→2→3 with bootstrap-only history;
+  resize/cross-DPI produced no extra epochs. Freeze this behavior. All-equal moving
+  views without an anchor remain ambiguous and suppressed.
 - Bottom-clipped-history completeness remains an open independent blocker. This change
   does not alter OCR, Paddle, trust calibration, completeness or conversation identity.
 - Final validation: Windows format verification passed; full Windows build passed with
@@ -465,8 +468,28 @@ Phase 4 observation behavior. Trust calibration remains separate.
   manual observer holding its DLL; after stopping that exact test process the build
   and tests passed. Python/model extraction tests were not rerun: no worker/OCR code
   changed. Two-axis review found and corrected top-partial and stale-DPI-fingerprint
-  issues; real-machine validation remains outstanding, including multi-frame layout
+  issues; at that integration gate real-machine validation remained outstanding, including multi-frame layout
   settling where reliable tail continuity is temporarily absent.
+
+### Visible-completeness follow-up (D-026, manual gate pending)
+
+- Reproduced the 15px fragment / 2px boundary gap defect with failing top/bottom
+  observer tests before implementation. Frame-local scale and rounded-cap evidence
+  replace the one-pixel completeness guard; detector minimum height is unchanged.
+- Deterministic coverage includes no OCR/NEW for those fragments, complete rounded
+  single/multiline bottom appends, and partial→full→partial text/identity preservation.
+- Private old captures provide real 36/54px single-line and 111px multiline pixels:
+  simulated bottom boundaries accept the full shapes and reject 15px fragments.
+  These are simulated boundary probes, NOT the requested real scroll capture pair.
+- Still required: capture the same real multiline message clipped and full (including
+  actual DPI/ROI/evidence), then repeat anchored appends, top/bottom scrolling/full
+  recovery and A→B→A. Phase 4.5 remains IN PROGRESS. OCR/trust is unchanged.
+- Final automated gates for this fix: Windows `dotnet format` passed; full Windows
+  build passed with zero warnings/errors; 223 .NET tests passed (157 Observer,
+  53 OCR, 6 Vision, 5 Windows, 2 Capture), zero failures/skips. Python/model tests
+  were not rerun because no worker/extraction code changed. An initial fixture test
+  incorrectly assumed the public reference contained multiline bubbles; that dataset
+  assertion was removed, and real multiline pixel probes were run privately instead.
 
 ### Acceptance
 

@@ -9,6 +9,50 @@ using WeChatJevHud.Observer;
 using WeChatJevHud.Vision;
 using WeChatJevHud.Windows;
 
+var completenessAudit = OptionValue(args, "--completeness-audit");
+if (completenessAudit is not null)
+{
+    var output = Path.GetFullPath(OptionValue(args, "--output") ?? ".ocr-cache/completeness-audit.json");
+    CapturedFrame frame;
+    int? dpi = int.TryParse(OptionValue(args, "--dpi"), out var suppliedDpi) ? suppliedDpi : null;
+    if (completenessAudit == "live")
+    {
+        var window = new Win32WeChatWindowTracker().Locate() ?? throw new InvalidOperationException("WeChat not found.");
+        frame = new Win32ScreenRegionCapture().Capture(window);
+        dpi = (int)window.Dpi.X;
+        PngFrameWriter.Save(frame, Path.ChangeExtension(output, ".png"));
+    }
+    else frame = PngFrameReader.Load(completenessAudit);
+    var detection = new BubbleDetectionPipeline(new DarkThemeChatRegionLocator(), new DarkThemeBubbleDetector()).Analyze(frame);
+    var evidence = new BubbleCompletenessAnalyzer().Analyze(frame, detection.ChatRegion.Bounds, detection.Bubbles);
+    var probes = detection.Bubbles.Where((b, i) => evidence[i].IsFullyVisible).Select(b =>
+    {
+        var roi = detection.ChatRegion.Bounds with { Height = b.Bounds.Bottom + 2 - detection.ChatRegion.Bounds.Y };
+        // Real pixels, simulated boundary: never label this as a real scroll capture pair.
+        var fragment = b with { Bounds = b.Bounds with { Height = Math.Min(15, b.Bounds.Height) } };
+        var fragmentRoi = roi with { Height = fragment.Bounds.Bottom + 2 - roi.Y };
+        var analyzer = new BubbleCompletenessAnalyzer();
+        return new
+        {
+            b.Bounds,
+            Full = analyzer.Analyze(frame, roi, [b])[0],
+            Fragment = analyzer.Analyze(frame, fragmentRoi, [fragment])[0]
+        };
+    }).ToArray();
+    Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+    await File.WriteAllTextAsync(output, JsonSerializer.Serialize(new
+    {
+        Source = completenessAudit,
+        Dpi = dpi,
+        Roi = detection.ChatRegion.Bounds,
+        Bubbles = detection.Bubbles.Select((b, i) => new { b.Bounds, b.Side, Completeness = evidence[i] }),
+        SimulatedBottomBoundaryProbes = probes
+    }, new JsonSerializerOptions { WriteIndented = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } }));
+    PngFrameWriter.Save(DetectionDebugRenderer.Render(frame, detection), Path.ChangeExtension(output, ".boxes.png"));
+    Console.WriteLine($"Completeness audit: {output}; bubbles={evidence.Count}; partial={evidence.Count(e => !e.IsFullyVisible)}; dpi={dpi}");
+    return 0;
+}
+
 var identityAudit = OptionValue(args, "--identity-audit");
 if (identityAudit is not null)
 {
@@ -834,7 +878,11 @@ static async Task<int> ObserveWeChatAsync(string[] arguments)
                     }
                     foreach (var visibility in result.BubbleVisibility ?? [])
                         Console.WriteLine($"bubble_visibility bounds={visibility.BubbleBounds} chat_roi={visibility.ChatRoi} " +
-                            $"complete={visibility.IsFullyVisible.ToString().ToLowerInvariant()}");
+                            $"complete={visibility.IsFullyVisible.ToString().ToLowerInvariant()} " +
+                            $"distance_to_top={visibility.Completeness?.DistanceToTop} distance_to_bottom={visibility.Completeness?.DistanceToBottom} " +
+                            $"bubble_height={visibility.Completeness?.BubbleHeight} nominal_full_bubble_height={visibility.Completeness?.NominalFullBubbleHeight} " +
+                            $"height_ratio={visibility.Completeness?.HeightRatio:F3} boundary_risk={visibility.Completeness?.BoundaryRisk} " +
+                            $"completeness_reason={visibility.Completeness?.Reason}");
                     foreach (var id in result.DuplicateMessageIds)
                     {
                         Console.WriteLine($"[epoch {result.Epoch.Id}] duplicate suppressed id={id}");
