@@ -308,7 +308,8 @@ public sealed class MessageObserver : IMessageObserver
         {
             foreach (var (messageIndex, candidateIndex) in strongVisualPreviousMatches)
             {
-                if (CanReuseText(previousVisibleMessages[messageIndex], candidates[candidateIndex]))
+                if (candidates[candidateIndex].KnownHistoryId is null &&
+                    CanReuseText(previousVisibleMessages[messageIndex], candidates[candidateIndex]))
                     candidates[candidateIndex].Ocr = OcrFrom(previousVisibleMessages[messageIndex]);
             }
         }
@@ -717,11 +718,17 @@ public sealed class MessageObserver : IMessageObserver
         IReadOnlyList<VisibleCandidate> candidates,
         Func<ObservedMessage, VisibleCandidate, bool> predicate)
     {
-        // Lock previous-visible occurrences first; only then fill chronological gaps from history.
-        var visible = SequenceAlignment.Align(previous.Count, candidates.Count,
-            (m, c) => predicate(previous[m], candidates[c]),
-            (m, c) => GeometryCost(previous[m], candidates[c]));
-        var anchors = visible.Select(pair => (Left: _messages.FindIndex(m => m.Id == previous[pair.Left].Id), Right: pair.Right)).ToArray();
+        // A known timeline window takes precedence over the last viewport's Y positions.
+        // In particular, one surviving equal occurrence must not steal its neighbour
+        // when returning to an anchored run. Append suffixes never enter this method.
+        var known = KnownHistoryWindow(candidates);
+        var anchors = known ?? SequenceAlignment.Align(previous.Count, candidates.Count,
+                (m, c) => predicate(previous[m], candidates[c]),
+                (m, c) => GeometryCost(previous[m], candidates[c]))
+            .Select(pair => (Left: _messages.FindIndex(m => m.Id == previous[pair.Left].Id), Right: pair.Right)).ToArray();
+        if (known is not null)
+            foreach (var (message, candidate) in known)
+                candidates[candidate].KnownHistoryId = _messages[message].Id;
         var result = new List<(int Left, int Right)>();
         var leftStart = 0;
         var rightStart = 0;
@@ -740,6 +747,30 @@ public sealed class MessageObserver : IMessageObserver
             rightStart = right + 1;
         }
         return result;
+    }
+
+    private IReadOnlyList<(int Left, int Right)>? KnownHistoryWindow(IReadOnlyList<VisibleCandidate> candidates)
+    {
+        bool Exact(int m, int c) => _messages[m].Side == candidates[c].Bubble.Side &&
+            candidates[c].IsFullyVisible && _messages[m].CompleteCropFingerprint is { } hash &&
+            hash == candidates[c].CropFingerprint;
+        bool Strong(int m, int c) => Exact(m, c) || CandidateTrustedTextMatches(_messages[m], candidates[c]) ||
+            (_messages[m].BubbleRect.Width == candidates[c].Bubble.Bounds.Width &&
+             _messages[m].BubbleRect.Height == candidates[c].Bubble.Bounds.Height &&
+             CandidateStronglyVisuallyMatches(_messages[m], candidates[c]));
+        foreach (Func<int, int, bool> evidence in new Func<int, int, bool>[] { Exact, Strong })
+        {
+            var ordered = SequenceAlignment.Align(_messages.Count, candidates.Count, evidence);
+            if (ordered.Count == 0) continue;
+            // Full known subsequences (including repeated-only views) reuse chronological
+            // occurrences. In partial discoveries require a unique two-sided anchor;
+            // unmatched gaps remain available for genuinely unseen historical messages.
+            var anchored = ordered.Any(p =>
+                Enumerable.Range(0, _messages.Count).Count(m => evidence(m, p.Right)) == 1 &&
+                Enumerable.Range(0, candidates.Count).Count(c => evidence(p.Left, c)) == 1);
+            if (ordered.Count == candidates.Count || anchored) return ordered;
+        }
+        return null;
     }
 
     private IReadOnlyList<(int Left, int Right)> ReconcileAfterAppend(
@@ -1042,6 +1073,7 @@ public sealed class MessageObserver : IMessageObserver
         public SemanticEdgeEvidence SemanticEdge { get; } = semanticEdge;
         public bool HasCompleteTextEvidence => IsFullyVisible && !SemanticEdge.Excluded;
         public SemanticRegionEvidence RegionEvidence { get; set; } = new(false, "Unverified");
+        public string? KnownHistoryId { get; set; }
         public string CropFingerprint { get; } = cropFingerprint;
         public bool IsFullyVisible { get; } = isFullyVisible;
         public DetectedBubble Bubble { get; } = bubble;

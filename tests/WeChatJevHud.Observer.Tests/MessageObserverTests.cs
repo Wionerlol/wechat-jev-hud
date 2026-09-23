@@ -10,6 +10,74 @@ namespace WeChatJevHud.Observer.Tests;
 public sealed class MessageObserverTests
 {
     [Fact]
+    public async Task Known_history_window_allows_one_genuinely_unseen_older_message()
+    {
+        var a = Bubble(12, 80, 80, MessageSide.Self);
+        var first = Bubble(12, 120, 120, MessageSide.Self);
+        var second = Bubble(12, 160, 120, MessageSide.Self);
+        var old = Bubble(12, 40, 220, MessageSide.Remote);
+        var observer = CreateObserver(new StubBubbleDetector([a, first, second], [old, a, first, second], [a, first, second]),
+            new StubOcrEngine(Ocr("anchor"), Ocr("好"), Ocr("好"), Ocr("older history")));
+        var baseline = Frame(10, [(a.Bounds, (byte)80), (first.Bounds, (byte)120), (second.Bounds, (byte)120)]);
+        await observer.ObserveAsync(baseline, default);
+        var ids = observer.State.VisibleMessages.Select(m => m.LogicalMessageId).ToArray();
+        var discovery = await observer.ObserveAsync(Frame(10, [(old.Bounds, (byte)220), (a.Bounds, (byte)80),
+            (first.Bounds, (byte)120), (second.Bounds, (byte)120)]), default);
+        Assert.Equal(MessageObservationKind.History, Assert.Single(discovery.MessagesObserved).Origin);
+        Assert.Equal(ids, observer.State.VisibleMessages.Skip(1).Select(m => m.LogicalMessageId));
+        Assert.Equal(4, observer.State.Messages.Count);
+        await observer.ObserveAsync(baseline, default);
+        Assert.Equal(ids, observer.State.VisibleMessages.Select(m => m.LogicalMessageId));
+        Assert.Equal(4, observer.State.Messages.Count);
+        Assert.Equal(0, observer.Counters.MessagesEmitted);
+    }
+
+    [Fact]
+    public async Task History_window_never_consumes_anchor_and_two_equal_live_suffixes()
+    {
+        var old = Bubble(12, 60, 120, MessageSide.Self);
+        var anchor = Bubble(12, 100, 80, MessageSide.Self);
+        var first = Bubble(12, 140, 120, MessageSide.Self);
+        var second = Bubble(12, 180, 120, MessageSide.Self);
+        var observer = CreateObserver(new StubBubbleDetector([old], [old, anchor], [old, anchor, first], [old, anchor, first, second]),
+            new StubOcrEngine(Ocr("好"), Ocr("anchor"), Ocr("好"), Ocr("好")),
+            chatRegionLocator: new SequencedChatRegionLocator(new CapturePixelRect(0, 30, 300, 270)));
+        CapturedFrame F(params DetectedBubble[] bubbles) => Frame(300, 300, 10,
+            bubbles.Select(b => (b.Bounds, b == anchor ? (byte)80 : (byte)120)).ToArray());
+        await observer.ObserveAsync(F(old), default);
+        var oldId = observer.State.Messages.Single().Id;
+        var a = Assert.Single((await observer.ObserveAsync(F(old, anchor), default)).NewMessages);
+        var b = Assert.Single((await observer.ObserveAsync(F(old, anchor, first), default)).NewMessages);
+        var c = Assert.Single((await observer.ObserveAsync(F(old, anchor, first, second), default)).NewMessages);
+        Assert.Equal(4, new[] { oldId, a.Id, b.Id, c.Id }.Distinct().Count());
+        Assert.Equal(3, observer.Counters.MessagesEmitted);
+        Assert.Equal(new[] { oldId, a.Id, b.Id, c.Id }, observer.State.VisibleMessages.Select(m => m.LogicalMessageId));
+    }
+
+    [Fact]
+    public async Task Returning_to_anchored_history_preserves_repeated_occurrences_and_timeline_count()
+    {
+        var a = Bubble(12, 40, 80, MessageSide.Self);
+        var first = Bubble(12, 80, 120, MessageSide.Self);
+        var second = Bubble(12, 120, 120, MessageSide.Self);
+        var b = Bubble(12, 160, 200, MessageSide.Self);
+        var shifted = first with { Bounds = first.Bounds with { Y = 120 } };
+        var observer = CreateObserver(new StubBubbleDetector([a, first, second, b], [first], [shifted], [a, first, second, b]),
+            new StubOcrEngine(Ocr("A"), Ocr("好"), Ocr("好"), Ocr("B")));
+        var original = Frame(10, [(a.Bounds, (byte)80), (first.Bounds, (byte)120), (second.Bounds, (byte)120), (b.Bounds, (byte)200)]);
+        await observer.ObserveAsync(original, default);
+        var ids = observer.State.VisibleMessages.Select(m => m.LogicalMessageId).ToArray();
+        await observer.ObserveAsync(Frame(10, [(first.Bounds, (byte)120)]), default);
+        await observer.ObserveAsync(Frame(10, [(shifted.Bounds, (byte)120)]), default);
+        var returned = await observer.ObserveAsync(original, default);
+        Assert.Equal(ids, observer.State.VisibleMessages.Select(m => m.LogicalMessageId));
+        Assert.Equal(4, observer.State.Messages.Count);
+        Assert.Empty(returned.MessagesObserved);
+        Assert.Equal(0, returned.Counters.MessagesEmitted);
+        Assert.Equal(1, returned.Epoch.Id);
+    }
+
+    [Fact]
     public async Task Edge_excluded_structurally_full_match_preserves_complete_text_but_disables_semantics()
     {
         var roi = new CapturePixelRect(377, 120, 771, 421);

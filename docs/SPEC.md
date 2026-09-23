@@ -415,6 +415,17 @@ conservative history; pixel-identical sampled scroll/append
 ambiguities remain unobservable. `live_edge_append` diagnostics give the decision,
 previous retained start, new suffix start and translation without printing chat text.
 
+On the non-append path, history reconciliation first attempts an ordered window/
+subsequence of the known chronological timeline (D-029). Exact complete-crop identity
+is preferred; existing strong visual evidence plus shape, or independent trusted text
+plus side, can also anchor it. Full known views reuse ordered occurrences without
+allocating History IDs, even when repeated messages have ambiguous Y positions.
+For partial discoveries, unique anchors bound gaps where genuinely unseen older
+messages may be inserted. Previous-visible geometry is fallback evidence, not an
+override of a resolved known window. This step never consumes an accepted append
+suffix and never changes NEW eligibility. Recovery is limited to the bounded retained
+timeline within the same epoch; it is not persistent arbitrary-history tracking.
+
 Bubble completeness uses frame-local nominal height, top/bottom distance and rounded
 background-cap evidence (D-026), not mere containment in the usable chat ROI.
 Near-boundary ambiguity is partial; closed full single/multiline shapes may still be
@@ -639,6 +650,9 @@ crop fingerprints and available previous logical IDs; each attempted start recor
 its first rejected predicate and Same-field differences. It includes no OCR text.
 Array position is the bubble index. Keep redirected traces private under `.ocr-cache`.
 Diagnostics do not relax predicates or change decisions and are disabled by default.
+The same opt-in additionally emits `history_window_state` after changed-frame
+reconciliation: epoch, ordered timeline IDs and current visible snapshots, with no
+OCR text, so scroll return identity can be verified without exposing private text.
 
 `SemanticRegionInspector` provides the approved conservative V0 region evidence:
 consistent inset background, sufficient background area, and no large solid embedded

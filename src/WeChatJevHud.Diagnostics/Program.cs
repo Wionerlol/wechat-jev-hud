@@ -868,6 +868,13 @@ static async Task<int> ObserveWeChatAsync(string[] arguments)
                 {
                     var frame = capture.Capture(window);
                     var result = await observer.ObserveAsync(frame, cancellation.Token);
+                    if (result.FrameChanged && Environment.GetEnvironmentVariable("WECHAT_APPEND_TRACE") == "1")
+                        Console.WriteLine("history_window_state=" + JsonSerializer.Serialize(new
+                        {
+                            Epoch = result.Epoch.Id,
+                            TimelineIds = observer.State.Messages.Select(m => m.Id).ToArray(),
+                            Visible = observer.State.VisibleMessages,
+                        }));
                     PrintIdentityObservation(result.Identity);
                     PrintBaselineObservation(result);
                     if (result.FrameChanged && result.LiveEdgeAppend is { } append)

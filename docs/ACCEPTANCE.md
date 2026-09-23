@@ -446,6 +446,27 @@ partial-width mismatch is NOT fixed by this change. Manual acceptance remains op
 Narrow-fix validation: Windows format and build passed (zero warnings/errors);
 247 .NET tests passed, including 171 Observer tests. No OCR benchmark was run.
 
+Repeated/live-edge append gate: **PASS for V0**, manually accepted on `200555e`.
+The first anchor emitted `e0001-m000010`, then the repeated Self messages emitted
+`e0001-m000011` and `e0001-m000012`, exactly once each, all using
+`anchored_translated_suffix`, semantic-ready, no Adaptive fallback. The width-changing
+463 -> 456px clipped-fragment case is an explicitly accepted conservative false-negative
+limitation, not an open request to loosen matching.
+
+Final scroll run: zero NEW, epoch stayed 1, no fallback. However two repeated history
+occurrences drifted from m000003/m000004 to m000032/m000003. Phase 4.5 remains
+IN PROGRESS pending the D-029 known-history-window fix and ONE final manual scroll
+away/back proving identical returned IDs, no timeline growth merely on return, zero
+NEW and no epoch change. The deterministic reproduction must fail before the fix;
+older-history discovery and new equal append suffixes must remain supported.
+The reproduction failed with old IDs 2/3 returning as new ID 5/old ID 2 before
+the fix; afterward all original IDs and the four-message timeline remain unchanged.
+Final automated gates: Windows format and build pass (zero warnings/errors),
+250 .NET tests pass, including 174 Observer tests. An initial added protection-test
+compile error (target-typed params argument) was corrected before these gates.
+No Python/OCR code changed or model benchmark was rerun; prior Python results are
+unchanged evidence, not a newly executed gate. Manual return-window validation pending.
+
 ### Observer regression gate (2026-09-22, D-024)
 
 Phase 4.5 remains blocked on real-device observer acceptance. The user confirmed that

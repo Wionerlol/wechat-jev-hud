@@ -812,3 +812,28 @@ Completion requires the final short Self/Remote, negation, mixed, two-line, repe
 append, scroll, A-B-A, known partial and minimize/restore real smoke workflow. No
 Phase 4.5 PASS or PR-ready claim before that gate passes. Only a clear meaning-changing
 production failure reopens OCR research; a literal mismatch alone does not.
+
+## D-029 — Recover known history occurrences before previous-viewport alignment
+
+The final scroll safety run had zero NEW events and no epoch changes, but two old
+equal-looking messages returned with a new History ID and a shifted old ID. This
+can duplicate recent context and is not accepted as cosmetic drift.
+
+Only the non-append history path changes: try an ordered mapping against the bounded
+known chronological timeline before geometry-weighted previous-visible alignment.
+Prefer exact stored complete crop identity, then existing strong visual/shape or
+independently observed trusted text evidence. A fully explained subsequence reuses
+existing occurrences in chronological order, including ambiguous repeated-only views.
+Partial discoveries require an anchor unique on both sides; unmatched gaps can still
+discover genuine older history. Known bindings are not overwritten by a geometry-only
+OCR reuse pass. OCR text alone is not a globally unique message identity.
+
+The append path and its reserved suffix bypass this step entirely: a genuinely new
+equal message still obtains its own LiveNew ID. No append, OCR, trust, completeness,
+conversation-identity or epoch-switch algorithm changes. Recovery is scoped to the
+current epoch and messages still retained in the configured in-memory buffer.
+
+The user separately accepts the 463 -> 456px top-clipped-width append false negative
+as a V0 limitation. Keep strict width/hash matching; reopen only if it repeatedly
+affects normal use. Freeze history reconciliation after the final manual return-window
+check passes; no further OCR/Observer investigation is part of this closeout.
