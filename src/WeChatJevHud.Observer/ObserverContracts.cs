@@ -127,10 +127,13 @@ public sealed record ObservedMessage(
     bool IsFullyVisible = true,
     bool HasCompleteText = true,
     string? CompleteCropFingerprint = null,
-    bool SemanticRegionVerified = false)
+    bool SemanticRegionVerified = false,
+    bool OutsideSemanticEdgeGuard = false)
 {
+    // IsFullyVisible is structural only. HasCompleteText records retained complete text;
+    // current semantic eligibility additionally requires the current edge evidence.
     public bool IsTrustedForSemantics =>
-        IsFullyVisible && HasCompleteText && SemanticRegionVerified && OcrStatus == OcrTextStatus.Recognized &&
+        IsFullyVisible && HasCompleteText && OutsideSemanticEdgeGuard && SemanticRegionVerified && OcrStatus == OcrTextStatus.Recognized &&
         OcrDiagnostics?.RuntimeFallback != true && OcrDiagnostics?.QuoteSeparationUnverified != true &&
         !string.IsNullOrWhiteSpace(NormalizedText);
 }

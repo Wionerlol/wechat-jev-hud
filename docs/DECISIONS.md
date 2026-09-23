@@ -793,6 +793,14 @@ continues. At 144 DPI, the known 496x26 / 2px-gap fragment is excluded; the full
 V0 exclusion, not a fix or universal proof for the rounded-cap completeness classifier.
 Existing diagnostics may remain. D-025 append and identity algorithms remain frozen.
 
+Smoke regression clarification: structural visibility comes exclusively from
+`BubbleCompletenessAnalyzer`. Semantic edge exclusion must never be folded into
+`IsFullyVisible`, live-tail continuity, or `_atLiveEdge`. Doing so caused genuine
+appends to become History. Complete-text eligibility combines structural visibility
+with outside-edge evidence, separately. A structurally valid LiveNew may remain
+semantically untrusted. Preserve previously complete text on edge-excluded views,
+but disable current semantic readiness. Origin is never rewritten by OCR/trust.
+
 Completion requires the final short Self/Remote, negation, mixed, two-line, repeated
 append, scroll, A-B-A, known partial and minimize/restore real smoke workflow. No
 Phase 4.5 PASS or PR-ready claim before that gate passes. Only a clear meaning-changing

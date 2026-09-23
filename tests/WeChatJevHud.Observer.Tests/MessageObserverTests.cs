@@ -10,6 +10,65 @@ namespace WeChatJevHud.Observer.Tests;
 public sealed class MessageObserverTests
 {
     [Fact]
+    public async Task Edge_excluded_structurally_full_match_preserves_complete_text_but_disables_semantics()
+    {
+        var roi = new CapturePixelRect(377, 120, 771, 421);
+        var safe = new DetectedBubble(new(700, 474, 180, 54), MessageSide.Self, .94);
+        var edge = safe with { Bounds = safe.Bounds with { Y = 485 } };
+        var ocr = new StubOcrEngine(Ocr("retained complete text"));
+        var observer = CreateObserver(new StubBubbleDetector([safe], [edge], [safe]), ocr,
+            identityProvider: new StubConversationIdentityProvider(Identity(1)),
+            chatRegionLocator: new SequencedChatRegionLocator(roi));
+        var initial = await observer.ObserveAsync(BubbleCompletenessTests.Shapes(roi, (safe.Bounds, 5)), default);
+        var id = Assert.Single(initial.MessagesObserved).Id;
+        await observer.ObserveAsync(BubbleCompletenessTests.Shapes(roi, (edge.Bounds, 5)), default);
+        var current = observer.State.Messages.Single(m => m.Id == id);
+        Assert.True(current.IsFullyVisible);
+        Assert.True(current.HasCompleteText);
+        Assert.False(current.OutsideSemanticEdgeGuard);
+        Assert.False(current.IsTrustedForSemantics);
+        Assert.Equal("retained complete text", current.RawText);
+        await observer.ObserveAsync(BubbleCompletenessTests.Shapes(roi, (safe.Bounds, 5)), default);
+        Assert.True(observer.State.Messages.Single(m => m.Id == id).IsTrustedForSemantics);
+        Assert.Equal(1, ocr.Calls);
+    }
+
+    [Fact]
+    public async Task Semantic_edge_tail_keeps_live_edge_and_translated_equal_appends_are_new()
+    {
+        var roi = new CapturePixelRect(377, 120, 771, 421);
+        DetectedBubble B(int y, int width) => new(new(700, y, width, 54), MessageSide.Self, .94);
+        var baseline = new[] { B(317, 160), B(485, 180) };
+        var anchor = new[] { B(233, 160), B(401, 180), B(485, 210) };
+        var first = new[] { B(149, 160), B(317, 180), B(401, 210), B(485, 64) };
+        var second = new[] { B(233, 180), B(317, 210), B(401, 64), B(485, 64) };
+        var observer = CreateObserver(new StubBubbleDetector(baseline, baseline, anchor, first, second),
+            new StubOcrEngine(Ocr("text")), identityProvider: new StubConversationIdentityProvider(Identity(1)),
+            chatRegionLocator: new SequencedChatRegionLocator(roi));
+        CapturedFrame F(DetectedBubble[] bubbles) => BubbleCompletenessTests.Shapes(roi,
+            bubbles.Select(b => (b.Bounds, 5)).ToArray());
+        await observer.ObserveAsync(F(baseline), default);
+        var edge = observer.State.Messages.Last();
+        Assert.True(edge.IsFullyVisible);
+        Assert.False(edge.HasCompleteText);
+        Assert.False(edge.IsTrustedForSemantics);
+        await observer.ObserveAsync(CloneWithFill(F(baseline), new(380, 200, 2, 2), 77), default);
+        var a = await observer.ObserveAsync(F(anchor), default);
+        Assert.NotEqual("not_stable_live_edge", a.LiveEdgeAppend!.Reason);
+        var anchorId = Assert.Single(a.NewMessages).Id;
+        var b = await observer.ObserveAsync(F(first), default);
+        var firstId = Assert.Single(b.NewMessages).Id;
+        var c = await observer.ObserveAsync(F(second), default);
+        var secondId = Assert.Single(c.NewMessages).Id;
+        Assert.NotEqual(firstId, secondId);
+        Assert.Equal(firstId, observer.State.VisibleMessages[^2].LogicalMessageId);
+        Assert.Contains(observer.State.VisibleMessages, m => m.LogicalMessageId == anchorId);
+        Assert.False(c.NewMessages[0].HasCompleteText);
+        Assert.False(c.NewMessages[0].IsTrustedForSemantics);
+        Assert.Equal(3, c.Counters.MessagesEmitted);
+    }
+
+    [Fact]
     public async Task Region_evidence_reaches_ocr_and_ambiguous_current_region_cannot_be_semantic_ready()
     {
         var bubble = new DetectedBubble(new(20, 70, 130, 70), MessageSide.Remote, .94);
@@ -37,7 +96,8 @@ public sealed class MessageObserverTests
             chatRegionLocator: new SequencedChatRegionLocator(roi));
         await observer.ObserveAsync(BubbleCompletenessTests.Shapes(roi, (anchor.Bounds, 5)), default);
         var result = await observer.ObserveAsync(BubbleCompletenessTests.Shapes(roi, (anchor.Bounds, 5), (appended.Bounds, 5)), default);
-        Assert.Empty(result.NewMessages);
+        // Origin is structural; the semantic edge gate must not rewrite LiveNew.
+        if (height >= 54) Assert.Single(result.NewMessages);
         var message = observer.State.Messages.Single(m => m.BubbleRect == appended.Bounds);
         Assert.False(message.IsTrustedForSemantics);
         Assert.False(message.HasCompleteText);

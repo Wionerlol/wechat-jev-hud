@@ -246,11 +246,12 @@ public sealed class MessageObserver : IMessageObserver
             .Select((bubble, index) => new VisibleCandidate(
                 bubble,
                 PixelFingerprint.ComputePerceptual(frame, bubble.Bounds).Signature,
-                completeness[index].IsFullyVisible && !edgeEvidence[index].Excluded,
-                PixelFingerprint.HashSampled(frame, bubble.Bounds, 8192, includeDimensions: true)))
+                completeness[index].IsFullyVisible,
+                PixelFingerprint.HashSampled(frame, bubble.Bounds, 8192, includeDimensions: true),
+                edgeEvidence[index]))
             .ToArray();
         foreach (var candidate in candidates)
-            candidate.RegionEvidence = candidate.IsFullyVisible
+            candidate.RegionEvidence = candidate.HasCompleteTextEvidence
                 ? SemanticRegionInspector.Inspect(new ImageCrop(frame, candidate.Bubble.Bounds))
                 : new(false, "IncompleteOrEdgeExcluded");
         _visibilityDiagnostics = candidates.Select((c, i) => new BubbleVisibilityDiagnostic(c.Bubble.Bounds, _chatRegion.Value, c.IsFullyVisible, completeness[i], edgeEvidence[i], c.RegionEvidence)).ToArray();
@@ -355,7 +356,7 @@ public sealed class MessageObserver : IMessageObserver
         var ocrDuration = TimeSpan.Zero;
         foreach (var candidate in candidates.Where(candidate => candidate.Ocr is null))
         {
-            if (!candidate.IsFullyVisible)
+            if (!candidate.HasCompleteTextEvidence)
             {
                 candidate.Ocr = new OcrResult("", null, OcrTextStatus.NoText, "");
                 continue;
@@ -541,8 +542,9 @@ public sealed class MessageObserver : IMessageObserver
                 IsVisible = true,
                 IsFullyVisible = candidates[candidateIndex].IsFullyVisible,
                 SemanticRegionVerified = candidates[candidateIndex].RegionEvidence.Verified,
+                OutsideSemanticEdgeGuard = !candidates[candidateIndex].SemanticEdge.Excluded,
             };
-            if (!updated.HasCompleteText && candidates[candidateIndex].IsFullyVisible)
+            if (!updated.HasCompleteText && candidates[candidateIndex].HasCompleteTextEvidence)
             {
                 var completeOcr = candidates[candidateIndex].Ocr!;
                 updated = updated with
@@ -557,7 +559,7 @@ public sealed class MessageObserver : IMessageObserver
                 };
                 completedMessages.Add(updated);
             }
-            else if (candidates[candidateIndex] is { IsFullyVisible: true, HasIndependentOcrEvidence: true } verified &&
+            else if (candidates[candidateIndex] is { HasCompleteTextEvidence: true, HasIndependentOcrEvidence: true } verified &&
                      string.Equals(updated.NormalizedText, verified.Ocr?.Text, StringComparison.Ordinal))
             {
                 updated = updated with { CompleteCropFingerprint = verified.CropFingerprint };
@@ -583,8 +585,6 @@ public sealed class MessageObserver : IMessageObserver
                 : _appendDecision.IsAppend && candidateIndex >= _appendDecision.SuffixStart
                     ? MessageObservationKind.LiveNew
                     : MessageObservationKind.History;
-            if (!candidate.IsFullyVisible && origin == MessageObservationKind.LiveNew)
-                origin = MessageObservationKind.History;
             var ocr = candidate.Ocr!;
             var message = new ObservedMessage(
                 $"e{_epoch!.Id:D4}-m{++_nextMessageId:D6}",
@@ -601,9 +601,10 @@ public sealed class MessageObserver : IMessageObserver
                 IsVisible: true,
                 OcrDiagnostics: ocr.Diagnostics,
                 IsFullyVisible: candidate.IsFullyVisible,
-                HasCompleteText: candidate.IsFullyVisible,
-                CompleteCropFingerprint: candidate.IsFullyVisible ? candidate.CropFingerprint : null,
-                SemanticRegionVerified: candidate.RegionEvidence.Verified);
+                HasCompleteText: candidate.HasCompleteTextEvidence,
+                CompleteCropFingerprint: candidate.HasCompleteTextEvidence ? candidate.CropFingerprint : null,
+                SemanticRegionVerified: candidate.RegionEvidence.Verified,
+                OutsideSemanticEdgeGuard: !candidate.SemanticEdge.Excluded);
             observed.Add(message);
             candidate.Message = message;
             InsertInTimeline(candidates, candidateIndex, message);
@@ -1032,8 +1033,11 @@ public sealed class MessageObserver : IMessageObserver
             _appendDecision);
     }
 
-    private sealed class VisibleCandidate(DetectedBubble bubble, string visualFingerprint, bool isFullyVisible, string cropFingerprint)
+    private sealed class VisibleCandidate(DetectedBubble bubble, string visualFingerprint, bool isFullyVisible, string cropFingerprint,
+        SemanticEdgeEvidence semanticEdge)
     {
+        public SemanticEdgeEvidence SemanticEdge { get; } = semanticEdge;
+        public bool HasCompleteTextEvidence => IsFullyVisible && !SemanticEdge.Excluded;
         public SemanticRegionEvidence RegionEvidence { get; set; } = new(false, "Unverified");
         public string CropFingerprint { get; } = cropFingerprint;
         public bool IsFullyVisible { get; } = isFullyVisible;

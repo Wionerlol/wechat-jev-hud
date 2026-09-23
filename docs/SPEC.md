@@ -618,11 +618,19 @@ The tested stability proposals still trust substantive errors and are not accept
 
 V0 applies a separate 6 DIP semantic edge guard, converted using the capture monitor's
 actual vertical DPI. A bubble with top or bottom usable-ROI distance below the rounded
-guard is treated as incomplete evidence regardless of rounded-cap diagnostics. It
+guard is treated as incomplete semantic evidence regardless of rounded-cap diagnostics. It
 may reconcile visually but cannot gain semantic readiness or replace complete text;
 unknown partial text is not OCRed. Full crops outside the guard still require the
 other hard gates. Native capture propagates DPI explicitly; offline fixtures default
 to 96 unless supplied. No desktop resolution or message-side rule is involved.
+
+`IsFullyVisible` is structural only, sourced from `BubbleCompletenessAnalyzer`.
+It alone supplies visibility to append detection and live-edge/geometry state.
+`HasCompleteTextEvidence = IsFullyVisible && OutsideSemanticEdgeGuard` controls
+new crop OCR and establishing/replacing complete text. Stored `HasCompleteText`
+may remain true for preserved older complete text while the current edge gate is
+false; current semantic readiness must still be false. A successful structural
+append retains LiveNew independently of OCR/trust eligibility.
 
 `SemanticRegionInspector` provides the approved conservative V0 region evidence:
 consistent inset background, sufficient background area, and no large solid embedded

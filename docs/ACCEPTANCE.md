@@ -406,10 +406,20 @@ mitigation is conservative edge exclusion, not more completeness heuristics. No
 extra verifier/calibration cycle is required. Semantic readiness is not exactness.
 
 Automated closeout evidence: Windows format and build passed (0 warnings/errors),
-242 .NET tests passed (166 Observer, 63 OCR, 6 Vision, 5 Windows, 2 Capture), and
+244 .NET tests passed (168 Observer, 63 OCR, 6 Vision, 5 Windows, 2 Capture), and
 46 Python deterministic tests passed. Region tests cover single-background multiline,
 embedded panels, tiny/ambiguous input, DPI and Observer evidence/cached-text safety.
 No model benchmark was rerun. These do not substitute for the final real smoke gate.
+
+The first V0 smoke failed: genuine Self appends were recorded as History. The
+semantic edge guard had been folded into structural visibility, disabling live-edge
+state. The narrow fix separates structural visibility from semantic/complete-text
+evidence without changing D-025 matching or append algorithms. Regression tests cover
+an edge-excluded tail followed by translated anchor/repeated suffixes, distinct NEW
+IDs, retained complete text and independently disabled semantic readiness. Windows
+format/build/full .NET gates above were rerun; the unchanged Python suite's earlier
+46-test result is retained. Real `anchor-smoke-3`, two separate repeated messages,
+scroll, bottom fragment and A-B-A revalidation remains pending; Remote is unavailable.
 
 ### Observer regression gate (2026-09-22, D-024)
 
