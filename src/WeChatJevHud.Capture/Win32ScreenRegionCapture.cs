@@ -107,7 +107,8 @@ public sealed class Win32ScreenRegionCapture : IWindowCapture
                 bounds,
                 method,
                 DateTimeOffset.UtcNow,
-                timer.Elapsed);
+                timer.Elapsed,
+                window.Dpi.Y);
         }
         finally
         {

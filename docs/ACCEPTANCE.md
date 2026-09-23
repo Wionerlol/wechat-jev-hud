@@ -382,6 +382,460 @@ Final manual acceptance evidence (2026-09-21):
 
 ---
 
+## Phase 4.5 — Production OCR runtime
+
+**Status: PASS for V0 — 2026-09-24 (D-028 through D-031).**
+Unified extraction, hard safety gates and bounded residual OCR risk are accepted.
+Final scroll/persistent-state safety passed on `cde5ebf`. Observer reconciliation is
+frozen; Phase 5/Jev has not begun. No further Phase 4.5 investigation is requested.
+
+V0 closeout requirements:
+
+- [x] Successful complete Unified Paddle output can become semantic-ready through
+  hard facts only, including verified semantic-region separation.
+- [x] Deterministic 6 DIP edge-guard tests cover 96/144/192 DPI and the known 144-DPI
+  496x26 / 2px-gap excluded versus 496x111 / 13px-gap allowed geometry.
+- [x] Full Windows format/build/.NET and Python regression gates completed for closeout.
+- [x] Final V0 manual gate under the user's narrowed closeout: accepted real Self
+  appends and final scroll safety; retain earlier negation/mixed/two-line, A-B-A,
+  edge-fragment and minimize/restore evidence. Fresh Remote sending was unavailable
+  in the final smoke and is NOT claimed as newly tested.
+- [x] Healthy-run fallback count zero; normal complete Paddle semantic-ready;
+  edge fragment untrusted and cannot overwrite complete text; no duplicate/replay/
+  epoch isolation regression. Existing D-025 manual evidence stays accepted.
+
+Final protected-state audit (`.ocr-cache/v0-transient-history-scroll-20260924-run1.log`):
+
+- 27 changed-frame state snapshots; NEW=0, epoch=1 throughout, fallback events=0.
+- Initial 9 retained messages grew to 25 through 16 fully evidenced older-history
+  discoveries. Zero new incomplete History IDs; no IDs allocated merely for fragments.
+- Every retained logical ID's chronological order was stable. Across all 25 IDs,
+  protected field snapshots never changed: epoch, raw/normalized text digests,
+  origin, first-observed time, complete-text flag and complete-crop fingerprint.
+- Returning to the complete viewport inserted no additional IDs or timeline entries.
+  The targeted repeats retained m000003/m000004. An ambiguous older visible bubble
+  mapped to m000015 rather than m000001 without modifying persistent content.
+- This remaining visible association is accepted as best-effort, NOT a semantic
+  identity guarantee. The strict 463 -> 456px clipped-width append false negative is
+  also an accepted V0 limitation; reopen only if repeated in normal use.
+- Final implementation gates: format/full Windows build passed, zero warnings/errors;
+  252 .NET tests passed (176 Observer, 63 OCR, 6 Vision, 5 Windows, 2 Capture).
+  The unchanged Python suite previously passed 46 tests; no new OCR benchmark ran.
+  No GitHub CI checks are reported for this branch; evidence is local Windows.
+
+**Historical development evidence follows.** Earlier IN PROGRESS, blocker and pending
+statements record their original runs and are superseded by the V0 acceptance above;
+they are retained to explain the failures and decisions, not additional open gates.
+
+The rounded-cap classifier's false positive remains documented. The accepted V0
+mitigation is conservative edge exclusion, not more completeness heuristics. No
+extra verifier/calibration cycle is required. Semantic readiness is not exactness.
+
+Automated closeout evidence: Windows format and build passed (0 warnings/errors),
+244 .NET tests passed (168 Observer, 63 OCR, 6 Vision, 5 Windows, 2 Capture), and
+46 Python deterministic tests passed. Region tests cover single-background multiline,
+embedded panels, tiny/ambiguous input, DPI and Observer evidence/cached-text safety.
+No model benchmark was rerun. These do not substitute for the final real smoke gate.
+
+The first V0 smoke failed: genuine Self appends were recorded as History. The
+semantic edge guard had been folded into structural visibility, disabling live-edge
+state. The narrow fix separates structural visibility from semantic/complete-text
+evidence without changing D-025 matching or append algorithms. Regression tests cover
+an edge-excluded tail followed by translated anchor/repeated suffixes, distinct NEW
+IDs, retained complete text and independently disabled semantic readiness. Windows
+format/build/full .NET gates above were rerun; the unchanged Python suite's earlier
+46-test result is retained. Real `anchor-smoke-3`, two separate repeated messages,
+scroll, bottom fragment and A-B-A revalidation remains pending; Remote is unavailable.
+
+The post-split real smoke also failed: the first new anchor returned
+`no_ordered_live_extension`, then later appends returned `not_stable_live_edge`.
+The latter is a cascade, not proof of the initiating cause. Existing logs preserve
+geometry but no crop hashes or raw frames for this transition. Replaying the logged
+geometry with explicitly assumed matching retained hashes proves an independent
+`clipped_prefix_geometry_mismatch`: previous multiline width 463 versus clipped
+component width 456, translation -146, clipped bottom 164 versus predicted 163.
+This conditional geometry test is NOT a complete replay of the actual hash inputs.
+No predicate/tolerance has been changed. Full-input diagnosis remains required before
+a narrow fix and the subsequent anchor-smoke-4 acceptance run.
+
+Fresh full-input trace `v0-append-predicate-20260924-run2` identifies a distinct exact
+failure: at-live-edge/stable both true; 8 previous/8 current bubbles; start=1;
+all seven retained hashes and dimensions identical, translation -84; the old top
+83px bubble would retain 14px but no component was detected, so currentStart=0
+versus clippedPrefix.Length=1 rejects with `clipped_prefix_count_mismatch`.
+The exact geometry/equality-pattern regression failed before the narrow fix and
+passed afterward (private hash values are bijectively renamed in the public test).
+One missing top-clipped prefix is now allowed only when its translated extent ends
+above the first retained bubble; no fully interior omission is allowed. No hash,
+width, matching, identity, OCR or trust tolerance changed. The earlier observed
+partial-width mismatch is NOT fixed by this change. Manual acceptance remains open.
+Narrow-fix validation: Windows format and build passed (zero warnings/errors);
+247 .NET tests passed, including 171 Observer tests. No OCR benchmark was run.
+
+Repeated/live-edge append gate: **PASS for V0**, manually accepted on `200555e`.
+The first anchor emitted `e0001-m000010`, then the repeated Self messages emitted
+`e0001-m000011` and `e0001-m000012`, exactly once each, all using
+`anchored_translated_suffix`, semantic-ready, no Adaptive fallback. The width-changing
+463 -> 456px clipped-fragment case is an explicitly accepted conservative false-negative
+limitation, not an open request to loosen matching.
+
+Final scroll run: zero NEW, epoch stayed 1, no fallback. However two repeated history
+occurrences drifted from m000003/m000004 to m000032/m000003. Phase 4.5 remains
+IN PROGRESS pending the D-029 known-history-window fix and ONE final manual scroll
+away/back proving identical returned IDs, no timeline growth merely on return, zero
+NEW and no epoch change. The deterministic reproduction must fail before the fix;
+older-history discovery and new equal append suffixes must remain supported.
+The reproduction failed with old IDs 2/3 returning as new ID 5/old ID 2 before
+the fix; afterward all original IDs and the four-message timeline remain unchanged.
+Final automated gates: Windows format and build pass (zero warnings/errors),
+250 .NET tests pass, including 174 Observer tests. An initial added protection-test
+compile error (target-typed params argument) was corrected before these gates.
+No Python/OCR code changed or model benchmark was rerun; prior Python results are
+unchanged evidence, not a newly executed gate. Manual return-window validation pending.
+
+D-029 real scroll: NEW=0, epoch=1, no fallback; target IDs m000003/m000004 retained.
+Another ambiguous old bubble associated with m000016 rather than m000001. The final
+return itself inserted no IDs, but audit found intermediate clipped fragments
+m000025/m000026/m000029 inserted among known messages and retained persistently.
+This failed the content-safety gate; it was not accepted as cosmetic drift.
+
+D-030 suppresses only unmatched incomplete History persistence before ID allocation.
+Two top/bottom regression cases failed before and passed after: no observed/persistent
+fragment, no ID consumption, no OCR call, protected stored fields/ID order unchanged
+on return; a subsequent complete older message still becomes History. Existing known
+partial recovery, genuine history discovery and live append suites remain required.
+Final manual scroll-away/back plus private protected-state audit is pending. No
+Phase 4.5 PASS or PR-ready claim until that check passes.
+Automated D-030 gates: format and full Windows build passed (zero warnings/errors);
+252 .NET tests passed, including 176 Observer tests. No OCR/model benchmark rerun.
+
+### Observer regression gate (2026-09-22, D-024)
+
+Phase 4.5 remains blocked on real-device observer acceptance. The user confirmed that
+two suspicious NEW samples were genuinely newly sent (not history replay), but a
+chat switch was missed. A controlled repeat then logged only the first of two Self
+`好` messages as NEW; the second had a separate ID but History origin. A→B→A remained
+epoch 1 and B content entered A history. Multiline text also changed on rediscovery;
+the old logs cannot prove whether that crop was clipped.
+
+- Five deterministic regressions were run red before fixes: Self/Remote equal
+  appends, sparse different title ink, and top/bottom partial OCR suppression.
+- Occurrence alignment now preserves previous-visible order and minimizes translated
+  geometry displacement; a stationary identical suffix may emit NEW. The old
+  all-identical scroll test was corrected to include actual viewport translation,
+  because its former unchanged positions were indistinguishable from a real append.
+- Title identity now uses tight ink with rasterization tolerance and structured
+  distances. Old-chat OCR is not borrowed when a new title fails continuity approval.
+- Partial candidates have explicit visibility/completeness, skip OCR, preserve
+  complete text, and need anchored evidence for edge-based association. Full recovery
+  OCRs incomplete text once; cached complete text needs a full-crop fingerprint or
+  independent full OCR agreement after clipping.
+- Private header audit: same title in 1116×680 / 662×680 captures had zero title
+  distance; same title at known 150%/100% DPI had visual distance 0.0854 and aspect
+  distance 0.0541 (same); different titles had 0.2972 / 0.4595 (different).
+  Title PNGs and JSON stay under `.ocr-cache/header-identity-*-audit.*`.
+  This small audit supports the representation, not general identity accuracy.
+- No Unified Paddle extraction, OCR normalization, OCR trust calibration or Jev changes.
+- Final native Windows gates: `dotnet format --verify-no-changes`, full solution
+  build (0 warnings/errors), and 129 .NET tests passed (63 Observer, 53 OCR,
+  6 Vision, 5 Windows, 2 Capture; no failures/skips).
+- Post-fix 10-second real observer smoke: 32 frames, 31 unchanged, one detection
+  run, 13 bootstrap OCR/Paddle requests, zero NEW/failures/fallbacks. Unchanged
+  frames issued no additional OCR. This is not the interactive manual gate below.
+
+Required manual retest (not yet PASS):
+
+1. Self `好`, `好`, then Remote `好`, `好`: two NEW events and distinct IDs per side.
+2. Scroll away/back: no replay.
+3. A→B→A: each switch pending 1/3→2/3→confirmed, exactly one epoch increment;
+   no B state in A and target history bootstrap-only.
+4. Resize and 150%↔100% DPI within one chat: no epoch churn.
+5. Scroll multiline history partially beyond each viewport edge, then reveal it:
+   partial diagnostics, no partial OCR/corrupted text replacement, full OCR once.
+
+### Goal
+
+Use Unified small-det + small-rec for already-isolated bubbles without regressing
+Phase 4 observation behavior. Trust calibration remains separate.
+
+### Explicit live-edge follow-up (D-025)
+
+- Post-D-024 manual run `observer-manual-retest-20260922-session2.log` still missed
+  two Self appends and emitted a clipped historical fragment as NEW. A later controlled
+  run `observer-manual-retest-20260922-183416.log` emitted exactly two Self and one
+  Remote `好` with distinct IDs; A→B→A advanced epochs 1→2→3, bootstrap-only;
+  subsequent resize/cross-DPI caused no extra epoch or NEW. The success does not erase
+  the earlier failures. Both logs remain private under `.ocr-cache`.
+- NEW authorization now runs in a dedicated live-edge append detector before history
+  reconciliation, reserving chronological occurrences and the appended suffix.
+  Generic LCS/history overlap cannot itself authorize NEW.
+- Deterministic coverage includes Self/Remote stationary repeats of lengths 1–8 and
+  suffixes 0–3; every two-symbol sequence through length six with either appended
+  symbol on either side (504 combinations); anchored translation, offscreen/top-clipped
+  old prefixes, scrolling, partial suffix rejection, and DPI→idle→append.
+- The old post-switch-settling append fixture made a visible prefix disappear without
+  motion. It now retains that prefix to test a real extension; a separate regression
+  explicitly rejects unexplained prefix disappearance, without weakening assertions.
+- D-025 manual evidence accepted by the user (2026-09-24): anchor4 plus five Self
+  repeats produced exactly six NEW events, with distinct IDs for all five repeats;
+  translated append used `anchored_translated_suffix`, deltaY=-84. Scrolling emitted
+  zero additional NEW; A→B→A advanced epochs 1→2→3 with bootstrap-only history;
+  resize/cross-DPI produced no extra epochs. Freeze this behavior. All-equal moving
+  views without an anchor remain ambiguous and suppressed.
+- Bottom-clipped-history completeness remains an open independent blocker. This change
+  does not alter OCR, Paddle, trust calibration, completeness or conversation identity.
+- Final validation: Windows format verification passed; full Windows build passed with
+  0 warnings/errors; all 209 .NET tests passed (143 Observer, 53 OCR, 6 Vision,
+  5 Windows, 2 Capture), no failures/skips. First full build was blocked by the prior
+  manual observer holding its DLL; after stopping that exact test process the build
+  and tests passed. Python/model extraction tests were not rerun: no worker/OCR code
+  changed. Two-axis review found and corrected top-partial and stale-DPI-fingerprint
+  issues; at that integration gate real-machine validation remained outstanding, including multi-frame layout
+  settling where reliable tail continuity is temporarily absent.
+
+### Visible-completeness follow-up (D-026, manual gate pending)
+
+- Reproduced the 15px fragment / 2px boundary gap defect with failing top/bottom
+  observer tests before implementation. Frame-local scale and rounded-cap evidence
+  replace the one-pixel completeness guard; detector minimum height is unchanged.
+- Deterministic coverage includes no OCR/NEW for those fragments, complete rounded
+  single/multiline bottom appends, and partial→full→partial text/identity preservation.
+- Private old captures provide real 36/54px single-line and 111px multiline pixels:
+  simulated bottom boundaries accept the full shapes and reject 15px fragments.
+  These are simulated boundary probes, NOT the requested real scroll capture pair.
+- Real paired fixture now captured at 144 DPI: partial 496×26, bottom gap 2px,
+  incorrectly Complete; full 496×111, bottom gap 13px, correctly Complete. Private
+  `.ocr-cache/completeness/{partial,full}-attempt-2.*` preserves the evidence.
+  Rounded-cap evidence still has a false positive. The user deferred this fix during
+  Phase 4.5B; do not change completeness or erase this blocker. Subsequent fix and
+  real scroll/full-recovery regression remain required before overall PASS.
+- Final automated gates for this fix: Windows `dotnet format` passed; full Windows
+  build passed with zero warnings/errors; 223 .NET tests passed (157 Observer,
+  53 OCR, 6 Vision, 5 Windows, 2 Capture), zero failures/skips. Python/model tests
+  were not rerun because no worker/extraction code changed. An initial fixture test
+  incorrectly assumed the public reference contained multiline bubbles; that dataset
+  assertion was removed, and real multiline pixel probes were run privately instead.
+
+### Acceptance
+
+- [x] A configurable persistent worker loads and warms both models once and emits an
+  explicit version/device/timing `READY` handshake.
+- [x] Crop bytes remain in memory and every UTF-8 protocol response is correlated by
+  request ID.
+- [x] Unified Paddle is behind `IOcrEngine`; detection occurs only inside isolated crops.
+- [x] Zero/one line recognizes original whole crop; 2+ lines use clipped ordered crops.
+- [x] Paddle `rec_score` remains engine-specific metadata and never becomes
+  `OcrConfidence` or a trust threshold.
+- [x] Paddle outputs remain untrusted pending separate calibration; no normal secondary engine.
+- [x] Worker unavailable/startup/crash/timeout/malformed-response paths fall back to
+  Adaptive without terminating the observer.
+- [x] Runtime/observer counters and startup, warmup, inference, roundtrip, transport,
+  and total OCR timing are exposed.
+- [x] Unchanged observer frames issue no additional Paddle requests.
+- [x] A visually inspected private 50–100 crop corpus, including the required
+  polarity/negation pairs, has zero trusted-wrong results.
+- [ ] The real observer workflow covers short Self/Remote `好`, another very short
+  Chinese message, a negation, English, mixed text, and a long wrapped message.
+- [ ] Phase 4 identity, deduplication, scrolling, and post-switch bootstrap behavior
+  are manually reconfirmed with production OCR enabled.
+
+### Unified production evidence (current)
+
+- Final gates: Windows `dotnet format --verify-no-changes`, full solution build,
+  and 112 .NET tests passed (including 46 observer regressions); native Windows Python
+  worker/benchmark suite 31 tests passed. No skipped or failed tests.
+- Deterministic coverage includes 0/1 original-pixel identity, changed one-line boxes,
+  ordered/clipped multiline crops, CJK/Latin composition, dual-model warmup/READY,
+  request correlation, detector/recognizer errors, crash, timeout, malformed/oversized
+  boxes, untrusted fallback, no successful-path Adaptive, score isolation and idle OCR.
+
+- The actual .NET `PaddleWorkerClient` / `PaddleRecognitionOcrEngine` /
+  `UnifiedPaddleOcrEngine` replay matches accepted Unified outputs and boxes on all
+  immutable 84 entries / 76 byte-distinct crops. Private report:
+  `.ocr-cache/phase4.5-paddle-bubble/production-parity.md`; full rows `production-unified.json`.
+- Exact/normalized: overall 79/84; calibration single-line 46/47; multiline/quote 7/7;
+  96 DPI 7/7; 144 DPI 7/7; punctuation 16/18; Chinese 62/65; English 6/8; mixed 9/9.
+- Healthy corpus fallback count 0. Semantic-ready remains 0; no score-based promotion.
+- Final replay steady-state p50/p95 ms: worker roundtrip 18.8/42.7, detector 9.1/17.1,
+  recognizer 8.4/30.8, total .NET OCR including PNG encode 19.4/46.4.
+  These include the first post-warmup request, exclude startup/warmup, and have no
+  interleaved benchmark control calls.
+- Remaining real-device gate: Self/Remote 好, 不行, English, mixed, long single-line,
+  two/three-line messages; scroll, resize/DPI, switch/bootstrap, minimize/restore.
+  A current-view smoke run does not substitute for that matrix.
+- Current-view smoke: seven real Self bubbles (好, 晚安, 不行, English, two mixed,
+  longer Chinese) were extracted exactly with one detected line each, LowConfidence /
+  semantic_ready=false and no fallback. 46 frames: 1 changed, 45 unchanged, 7 OCR
+  calls only at bootstrap, 0 NEW. Worker startup/warmup 3007.1/565.0 ms.
+  Remote, multiline and physical interaction matrix are not yet reconfirmed.
+
+Historical routed-runtime evidence (superseded by D-023, retained for traceability):
+
+- Final automated gates passed on Windows: solution format verification, a full build
+  with 0 warnings/errors, 104 .NET tests, and 9 Python worker/benchmark tests.
+- Windows-native Python 3.10 under `%LOCALAPPDATA%` loaded PaddleOCR 3.7.0,
+  PaddlePaddle GPU 3.2.2, and `PP-OCRv6_small_rec` on `gpu:0` (RTX 5080); WSL is not
+  an application runtime dependency.
+- A real observer run established one four-bubble bootstrap, routed two crops to
+  Paddle, then skipped OCR on all 33 unchanged frames. It reported 17.7 ms aggregate
+  Paddle inference, 62.2 ms aggregate roundtrip, no failure/fallback, and no new event.
+- The first 18-crop production run exposed and fixed a UTF-8 protocol decoding bug;
+  its pre-fix accuracy is invalid evidence.
+- The corrected two-engine policy produced one trusted-wrong shared glyph error
+  (`没事啦没事啦` -> `没事哒没事哒`). The policy was deliberately tightened without a
+  Paddle-score threshold.
+- The stronger-evidence run produced 12/18 raw and normalized exact, 4/18
+  semantic-ready, and 0 trusted-wrong. `好`, `嗯嗯`, and `怎么说` were correct Paddle
+  outputs but remained safely untrusted where independent evidence was absent. At
+  that point, the only represented polarity item (`好`) was correct; the later 52-crop
+  run supplied the complete polarity corpus.
+- The completed 52-crop private corpus was collected from seven batches and visually
+  reviewed crop-by-crop. The corrected production policy produced 46/52 raw and
+  normalized exact, 46/47 single-line exact, 6/52 semantic-ready, and 0 trusted-wrong.
+- All 12 required polarity/negation samples were exact. The same-crop Adaptive-only
+  baseline marked 5/47 single-line samples semantic-ready, but only 2 were correct and
+  3 were trusted-wrong; routed production OCR produced 6 correct semantic-ready
+  single-line samples and zero trusted-wrong.
+- The initial 52-crop run exposed six trusted-wrong cases caused by trusting Adaptive
+  disagreement or high-confidence Adaptive-only multiline output. The production
+  router now keeps both categories as `LowConfidence` candidates; the rerun passed the
+  corpus gate without using Paddle `rec_score` as a threshold.
+- The passing run used `gpu:0`, reported 3431.5 ms startup, 589.8 ms warmup, 52.4/137.3
+  ms total OCR p50/p95, and 11.4/12.1 ms Paddle inference p50/p95.
+- The private report and crops remain under `.ocr-cache` and are not committed.
+- The first real observer message-matrix attempt separated a recognition/input issue
+  from a trust-policy issue: `好`, `不行`, and `微信 OCR test 456` were recognized
+  exactly but remained `LowConfidence`; `晚安` was exact and `Recognized`; English
+  produced `Hello` -> `H引0`, and a wrapped English sample gained an extra character.
+  The 52-crop corpus simultaneously showed 46/47 exact single-line Paddle results but
+  only 6/52 semantic-ready results. No score threshold will be tuned to hide this gap.
+- Before further trust-policy work, a private same-crop input audit must compare raw
+  whole bubbles, a safely padded contrast-derived text ROI, 32/40/48 px detected
+  text-band normalization with nearest/bicubic/Lanczos interpolation, and conservative
+  grayscale/background normalization on both 96 DPI (100%) and 144 DPI (150%) real
+  captures. The same `PP-OCRv6_small_rec` instance must process every variant.
+- The audit must retain bubble/ROI/text-band geometry, DPI, route, raw/normalized
+  exactness and CER, `rec_score`, inference timing, and private side-by-side artifacts.
+  Preprocessing-variant agreement is not independent-engine agreement.
+
+Routing audit and fix evidence:
+
+- Final routing-change gates: Windows format verification and full build passed
+  (0 warnings/errors); 109 .NET tests including 46 observer tests passed; 17 Python
+  audit/benchmark/worker tests passed. Review found and fixed EOF band flushing and
+  stale viewer-manifest truncation; quoted-role diagnostic requests retain their role.
+- Input audit completed: 14 real bubbles at 96/144 DPI, 14 variants, 196/196 raw and
+  normalized exact. Raw whole-bubble input itself was 14/14; no preprocessing benefit
+  was demonstrated. Production Paddle input remains the raw whole bubble.
+- The actual .NET router counted three bands for two 144-DPI single-line crops.
+  Corner/background pixels formed false bands at rows 4–6 and 47–49, with 4–5
+  contrasting pixels crossing the four-pixel/three-row thresholds. At 96 DPI the
+  same edges contributed only 1–2 pixels and did not cross the threshold.
+- Routing now excludes contrast components connected to the crop boundary from its
+  layout evidence. Glyph-height-derived gap and minimum-band thresholds replace fixed
+  2/3-pixel values; the raw image sent to OCR is unchanged. Final bands flush at EOF.
+- Replaying the 14 real crops through .NET yields 14/14 PaddleSingleLine routes.
+  Five existing real multiline calibration crops remain Adaptive. Those older crops
+  lack DPI metadata, so paired real multiline DPI acceptance remains outstanding.
+- A real external-monitor observer run bootstrapped all seven texts exactly, made
+  seven Paddle requests with zero failures, and skipped OCR on 27 unchanged frames.
+  It emitted zero NEW events. All seven remained LowConfidence under unchanged trust.
+- Private native HTML inspection shows source dimensions, ROI size, capture DPI,
+  devicePixelRatio and viewport scale. Images scroll horizontally without fitting to
+  table columns. Physical native viewing still needs browser/manual confirmation.
+
+Manual acceptance remains blocked until paired multiline routing and the 144-DPI
+observer rerun are confirmed, followed separately by review of trust evidence.
+Paddle-only full-bubble experiment (production remains unchanged):
+
+- Evaluated the 52 calibration crops, both seven-crop DPI sets and 18 Phase 3
+  fixtures: 84 entries / 76 byte-distinct PNGs, including separately labeled quote
+  regions. Older samples without recorded DPI retain unknown DPI rather than guesses.
+- Windows GPU runtime: PaddleOCR 3.7.0 / PaddlePaddle 3.2.2; one small detector and
+  one small recognizer loaded and warmed once, no document/orientation modules.
+- Raw/normalized exact: Paddle-only 78/84 vs freshly rerun current routed 71/84.
+  Six two-line entries plus one three-line entry were exact; current routed was 0/7.
+  The 96-DPI and 144-DPI single-line sets each remained 7/7.
+- Calibration-only single-line exactness regressed from 46/47 to 44/47: three new
+  punctuation-width errors versus one repaired comma-space error. Overall calibration
+  accuracy improved 46/52 -> 49/52 through multiline recovery. Existing Remote glyph
+  errors persisted. No trust conclusions follow from these extraction scores.
+- Paddle module pipeline total p50/p95: 13.3/32.5 ms, including line sorting/cropping
+  and composition, excluding image decoding, artifact IO, IPC and startup. Current
+  routed end-to-end OCR p50/p95: 52.0/142.0 ms, including IPC and secondary OCR; these
+  are different timing boundaries. Cached startup/warmup: 2993.1/440.3 ms.
+- Private `phase4.5-paddle-bubble/` contains per-line crops, box SVGs, full JSON/Markdown
+  and same-fixture comparison with expected-label/crop-hash validation. Twenty-one
+  Python tests passed. Production .NET code was
+  not changed in this experiment; prior Windows tests are not a new production test.
+- Router removal is deferred: segmentation is promising but single-line regression,
+  Latin word-wrap ambiguity and limited paired-DPI multiline coverage need review.
+  Trust calibration remains separate; no rec_score threshold or Adaptive veto was added.
+
+The remaining real observer matrix and Phase 4 regression workflow stay paused. Phase
+4.5 remains IN PROGRESS.
+
+Unified extraction follow-up (benchmark only):
+
+- Same immutable 84 entries / 76 distinct PNGs; labels, hashes, detected counts and
+  line boxes checked against the prior experiment. One detector and one recognizer
+  remain loaded, with extra direct whole-crop control calls excluded from timing.
+- Zero/one detection uses original raw whole-bubble recognition; two or more retains
+  the prior line-crop algorithm. Main and quote samples stay separate.
+- Unified exact: 79/84 overall, 46/47 calibration single-line, 7/7 multiline/quote,
+  7/7 each at 96/144 DPI, 16/18 punctuation, 62/65 Chinese, 6/8 English, 9/9 mixed,
+  2/2 digits/other. Raw and normalized exact counts are equal. Language cohorts use
+  CJK/Latin-letter presence; punctuation overlaps language cohorts.
+- Three punctuation-width cases improve over line-rec; two English comma-space
+  cases regress relative to line-rec. Zero regressions relative to routed or raw
+  single-line control; the remaining three errors are existing Remote glyph errors
+  (including one aliased crop). No evaluation normalization was relaxed.
+- Unified p50/p95: 14.0/33.3 ms, excluding input decoding, IPC, artifact IO, startup
+  and control calls. Startup/warmup: 3107.7/417.6 ms. These are local benchmark timings,
+  not production observer latency. Each sample follows a raw-recognition control call,
+  which may warm shape-specific caches despite its excluded timing. Zero detection did
+  not occur in this corpus.
+- Twenty-five Python tests pass, including raw-pixel identity for zero/one detection
+  and equality with existing multiline crop extraction. Production .NET/worker/trust
+  code is unchanged. Recommend the Unified architecture for subsequent implementation;
+  do not infer semantic readiness from this extraction benchmark.
+
+Stop for review; Phase
+4.5 is not PASS and Phase 5 must not begin.
+
+---
+
+## Phase 4.5B — OCR trust calibration
+
+**Status: research CLOSED for V0 by D-028/D-031.** The experimental stability/verifier
+policies were not accepted into production. The following is historical evidence;
+its pending labels/gates do not reopen the completed Phase 4.5 V0 acceptance.
+
+See [PHASE45B_TRUST_CALIBRATION.md](PHASE45B_TRUST_CALIBRATION.md) for rules, runtime,
+counts, cohorts, gaps and private review procedure. No production behavior changed.
+
+- Same immutable 84 entries / 76 distinct manually reviewed full crops; known partial
+  pair excluded. Production-function outputs retain 84/84 benchmark parity (79 exact).
+- Same-model repeat, detector-line diagnostic and 1.5× Lanczos diagnostic are correlated
+  stability evidence, not independent agreement. No Adaptive or rec_score threshold.
+- Strict candidate: 72 trusted-exact, 3 trusted-wrong, 7 untrusted-exact, 2 untrusted-wrong;
+  coverage 75/84; false trust 3/75. Two distinct wrong crops survive every probe.
+- The 52-crop subset alone gives 47 trusted-exact and no trusted-wrong, but broader
+  Remote fixtures invalidate a general safety claim. Do not tune to the smaller set.
+- Non-exact semantic-equivalence/danger/polarity labels require human review; unknown
+  is not safe. No accepted zero-dangerous-error result is claimed.
+- Missing six short/polarity concepts, broader Remote and dual-DPI multiline samples
+  require real capture. Existing side labels are inferred; missing DPI stays unknown.
+- Private review HTML/JSON/Markdown are in `.ocr-cache/phase4.5b-trust/`.
+- Overall Phase 4.5 remains blocked by completeness and unaccepted trust calibration.
+- Focused Remote polarity audit: 2 distinct crops / 3 entries; raw, light-background
+  inversion and contrast-preserving grayscale all retain the same recorded non-exact
+  outputs (6 real recognitions, no corrections). This is not proof of intrinsic cause;
+  source transcription and actual human semantic review remain pending. AI visual
+  suggestions are not human labels. No expected-label edits or production changes.
+- Expansion batches are prepared (24 Remote plus matched Self where practical), but
+  new messages are not yet visible/captured. No synthetic acceptance samples.
+
 ## Phase 5 — Jev integration
 
 ### Goal

@@ -1,15 +1,68 @@
 # WeChat × Jev Conversation HUD
 
-This checkout implements accepted Phases 0–4. It does not implement Phase 5 Jev
-calls or the HUD overlay.
+This checkout implements accepted Phases 0–4 and **Phase 4.5 PASS for V0** production
+OCR runtime. It does not implement Phase 5 Jev calls or the HUD overlay.
+
+Phase 4.5B research is frozen by D-028: 119/124 distinct reviewed crops were literally
+exact; all five non-exact outputs were human-labelled semantically equivalent. V0
+accepts residual OCR risk, not a guarantee of correctness. Production uses hard safety
+gates, a conservative region check and a 6 DIP viewport-edge exclusion. Final scroll
+and persistent-state safety acceptance passed on 2026-09-24 (D-031).
 
 ## What is available
+
+Current Phase 4.5 extraction: Unified Paddle, production parity **79/84**, no Adaptive
+fallbacks on the healthy corpus. V0 observer acceptance is complete with the explicit
+limitations below; no further OCR calibration is planned. Historical worker evaluation uses
+`scripts/evaluate-production-ocr.ps1`, then
+`python -m scripts.compare_production_unified --root .ocr-cache/phase4.5-paddle-bubble`
+to check the immutable benchmark parity. Reports remain private under `.ocr-cache`.
+
+Observer regression fixes include geometry-aware occurrence matching and title-ink
+identity evidence; V0 edge safety is accepted without claiming perfect completeness.
+NEW detection now uses a separate live-edge append detector before history matching
+(D-025); inspect `live_edge_append` decisions. Ambiguous moving all-equal views remain
+suppressed. D-025's anchored repeated appends, scrolling and A→B→A are manually
+accepted. The bottom-clipped-history fix (D-026) uses scale/rounded-cap evidence and
+has a confirmed failing private clipped/full pair. V0 mitigates it with a 6 DIP semantic
+edge exclusion rather than claiming the rounded-cap classifier is fixed.
+Unmatched incomplete History remains transient and never enters the persistent
+timeline. Historical visible association for ambiguous repeats is best-effort, not
+a semantic guarantee: the final audit found zero NEW, no epoch change, no incomplete
+History allocations and no protected-field/order mutations across 27 state snapshots.
+A top-clipped width change (463 -> 456px) may conservatively miss an append; strict
+width/hash matching is retained to avoid history replay. Fresh Remote sending was
+unavailable in the final smoke, not claimed as newly verified. See ACCEPTANCE.md.
+In `observe.ps1` diagnostics, inspect
+`occurrence`, `title_visual_distance`, and `bubble_visibility` records. Repeat Self
+and Remote equal-message appends, scroll away/back, A→B→A and clipped multiline history.
+
+Private completeness audit (Windows Diagnostics, opt-in screenshots, no OCR):
+`--completeness-audit live --output .ocr-cache/completeness/partial.json`.
+Repeat with `full.json` after manually revealing the same message. JSON records actual
+DPI, ROI, bounds and completeness evidence; PNGs remain private. File input is also
+supported; simulated boundary probes are explicitly labeled, not real scroll evidence.
+
+Optional private header audit (no OCR, no contact-name logging):
+
+```powershell
+dotnet run --project src/WeChatJevHud.Diagnostics -- `
+  --identity-audit debug-captures/chat-a.png --compare-image debug-captures/chat-b.png `
+  --output .ocr-cache/header-identity-audit.json
+```
+
+This explicitly exports two title-region PNGs and structured distances for visual
+inspection. Do not commit them. A same-title comparison alone is not switch acceptance.
 
 - `WeChatJevHud.App`: WPF diagnostic UI that refreshes HWND/process/title/class, desktop bounds, monitor, and DPI every 500 ms. Its button saves and previews one frame only when explicitly pressed.
 - `WeChatJevHud.Diagnostics`: command-line window diagnostics, explicit capture, offline fixture detection, and capture-plus-detection.
 - `WeChatJevHud.Vision`: capture-relative chat ROI location, `Remote`/`Self`/`Unknown` text-bubble detection, heuristic detection scores, timing, and annotated debug rendering.
 - Replaceable interfaces for window tracking, capture, bubble detection, OCR, Jev, and overlay rendering.
 - `WeChatJevHud.Ocr.Windows` and `WeChatJevHud.Ocr.Tesseract`: crop-only Simplified Chinese/English OCR adapters, explicit nullable `OcrConfidence`, low-confidence status, preprocessing variants, and an adaptive candidate policy.
+- `WeChatJevHud.Ocr`: Unified bubble extraction through persistent
+  `PP-OCRv6_small_det` + `PP-OCRv6_small_rec`, engine-specific evidence, and
+  a conservative trust/fallback policy. Paddle `rec_score` never becomes
+  `OcrConfidence`.
 - `WeChatJevHud.Observer`: in-memory change detection, conversation epochs, ordered
   visible-message reconciliation, duplicate suppression, and Bootstrap/History/LiveNew
   observation state.
@@ -82,8 +135,8 @@ then install the experiment dependency and run the private manifest:
 
 ```bash
 python3 -m venv .ocr-cache/paddle-venv
-# Use the official selector to install paddlepaddle-gpu==3.3.0 for the local CUDA
-# runtime (or the matching paddlepaddle==3.3.0 CPU wheel) first.
+# Use the current official selector to install the backend matching the local CUDA
+# runtime (or the current CPU wheel) first; do not infer this from the OCR package.
 .ocr-cache/paddle-venv/bin/pip install paddleocr==3.7.0
 .ocr-cache/paddle-venv/bin/python scripts/paddle_ocr_benchmark.py \
   --manifest .ocr-cache/phase3-paddle-benchmark.json \
@@ -130,15 +183,178 @@ diagnostic:
 Use `-Seconds 30` for a bounded run or `-IntervalMilliseconds 200` to change the
 lightweight check interval. The observer never writes screenshots or chat logs.
 
+### Phase 4.5 production OCR runtime
+
+Install the Windows-native runtime once from Windows PowerShell. The default GPU
+install follows Paddle's current Windows CUDA 12.9 wheel guidance and stores the
+environment under `%LOCALAPPDATA%\WeChatJevHud\paddle-ocr`:
+
+The installer requires [`uv`](https://docs.astral.sh/uv/getting-started/installation/)
+on the Windows `PATH`; follow its official install instructions first if `Get-Command
+uv` fails.
+
+```powershell
+.\scripts\install-paddle-runtime.ps1
+.\scripts\observe.ps1 -DebugText
+```
+
+The observer launches one persistent worker, waits for `READY`, reports exact
+model/library/device information, and keeps both models resident. Bubble PNG bytes use
+an ID-correlated UTF-8 JSON-lines protocol in memory; normal operation writes no
+message crops. Detection occurs only inside Phase 2's isolated bubbles. Zero/one text
+line uses the original raw whole crop; 2+ lines use clipped, ordered line crops and
+CJK/Latin wrap composition. No preprocessing or custom scale-aware router is used.
+Adaptive runs only on worker/protocol/device failure, never as a normal second opinion.
+Successful Paddle may become semantic-ready only with complete text, verified single
+semantic region, valid lines and outside the 6 DIP edge guard. Unknown regions and
+Adaptive fallback remain untrusted. Per-line scores are diagnostic only;
+`OcrConfidence` remains null for Paddle. Semantic-ready does not mean transcript-exact.
+Worker/library stderr is suppressed by default. `-PaddleWorkerDebug` explicitly
+enables privacy-safe troubleshooting metadata (severity category and character count),
+never the raw third-party stderr line; output is capped to avoid log flooding.
+
+Private calibration data belongs under `.ocr-cache`. Put the expected visible
+messages in top-to-bottom order in a text file, show exactly those text bubbles in
+WeChat, then run:
+
+```powershell
+.\scripts\collect-ocr-calibration.ps1 `
+  -ExpectedFile .\.ocr-cache\expected-batch.txt `
+  -Side self
+
+.\scripts\evaluate-production-ocr.ps1
+```
+
+If known older matching bubbles remain above the labeled batch, pass `-Skip N`.
+Collection still requires the viewport to contain exactly `N + expected lines` matching
+bubbles, then saves only the labeled suffix.
+
+Collection aborts without saving when the expected-line and detected-bubble counts
+differ. Every crop/label pairing still requires visual inspection. The report keeps
+raw/normalized accuracy, Paddle `rec_score`, Adaptive output, trust, CER,
+startup/warmup and request timings, fallbacks, polarity errors, and trusted-wrong count
+separate. Crops and reports remain gitignored.
+
+Phase 4.5 remains IN PROGRESS: final V0 observer smoke acceptance remains; further
+trust research is stopped. The historical input audit compared
+the same detected bubble as a raw crop, a contrast-derived text ROI with safe padding,
+32/40/48 px text-band normalization using nearest/bicubic/Lanczos interpolation, and
+a conservative grayscale/background-normalized Lanczos variant. It does not use text
+detection, deskew, dewarp, perspective correction, or binarization, and it does not
+change production preprocessing or trust policy.
+
+All 196 audit runs were exact, including every raw bubble. Production keeps raw
+whole-bubble Paddle input. Use `.ocr-cache/phase4.5-input-audit/inspection.html` for
+baseline routing and `inspection-fixed.html` for corrected routing with native
+device-pixel images, source dimensions, DPI and browser scale. Long images scroll;
+the Markdown table is a navigation aid, not a sharpness comparison.
+
+To export actual .NET routing evidence without running OCR:
+
+```powershell
+dotnet run --project src/WeChatJevHud.Diagnostics -- `
+  --routing-audit .ocr-cache/phase4.5-input-audit/dpi150/manifest.json `
+  --output .ocr-cache/phase4.5-input-audit/dpi150/manifest.routing-fixed.json
+# Repeat for dpi100. Render existing evidence without re-running OCR:
+python scripts/ocr_audit_viewer.py --root .ocr-cache/phase4.5-input-audit `
+  --routing-suffix .routing-fixed.json --output-name inspection-fixed.html
+```
+
+The viewer requires Pillow. Native mode compensates for `devicePixelRatio` and
+`visualViewport.scale`; desktop browsers do not separately expose OS scale and
+browser zoom. Reset zoom with Ctrl+0 and inspect at native mode.
+
+Collect the same seven visible self-message bubbles once on each monitor, without
+resending between captures:
+
+```powershell
+.\scripts\collect-ocr-calibration.ps1 `
+  -ExpectedFile .\.ocr-cache\phase4.5-input-audit\expected.txt `
+  -Side self `
+  -CalibrationDirectory .\.ocr-cache\phase4.5-input-audit\dpi150
+
+# Move the same WeChat window, with the same bubbles visible, to the 100% monitor.
+.\scripts\collect-ocr-calibration.ps1 `
+  -ExpectedFile .\.ocr-cache\phase4.5-input-audit\expected.txt `
+  -Side self `
+  -CalibrationDirectory .\.ocr-cache\phase4.5-input-audit\dpi100
+
+.\scripts\audit-ocr-input.ps1 `
+  -Manifest `
+    .\.ocr-cache\phase4.5-input-audit\dpi150\manifest.json, `
+    .\.ocr-cache\phase4.5-input-audit\dpi100\manifest.json
+```
+
+The private Markdown/JSON report records bubble and ROI geometry, estimated text-band
+height, actual capture DPI, route, raw/normalized exactness and CER, `rec_score`, and
+inference time. Each fixture directory also contains `raw_crop.png`, `text_roi.png`,
+`normalized_lanczos.png`, and `normalized_gray.png` for manual inspection. Agreement
+between preprocessing variants is explicitly not independent-engine agreement.
+
 From WSL, invoke the same Windows scripts through interop, for example:
 
 ```bash
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(wslpath -w scripts/diagnose.ps1)" -Capture
 ```
 
+### Experimental full-bubble Paddle benchmark
+
+The Phase 4.5 experiment in `scripts/paddle_bubble_benchmark.py` evaluates small text
+detection **inside existing bubble crops** followed by small recognition per line.
+It leaves the production worker/router/trust unchanged. Both models stay loaded for
+the run; document orientation, unwarping and line orientation modules are absent.
+Use the installed Windows Paddle Python (with the project as current directory):
+
+```powershell
+& "$env:LOCALAPPDATA\WeChatJevHud\paddle-ocr\.venv\Scripts\python.exe" `
+  scripts/paddle_bubble_benchmark.py `
+  --manifest .ocr-cache/phase4.5-calibration/manifest.json `
+    .ocr-cache/phase4.5-input-audit/dpi100/manifest.json `
+    .ocr-cache/phase4.5-input-audit/dpi150/manifest.json `
+    .ocr-cache/phase3-paddle-benchmark.json `
+  --output .ocr-cache/phase4.5-paddle-bubble
+python scripts/paddle_bubble_benchmark.py `
+  --manifest .ocr-cache/phase4.5-calibration/manifest.json `
+  --output .ocr-cache/phase4.5-paddle-bubble --snapshot-baseline
+.\scripts\evaluate-production-ocr.ps1 `
+  -Manifest .ocr-cache/phase4.5-paddle-bubble/manifest.json `
+  -Output .ocr-cache/phase4.5-paddle-bubble/routed.md
+python scripts/paddle_bubble_benchmark.py `
+  --manifest .ocr-cache/phase4.5-calibration/manifest.json `
+  --output .ocr-cache/phase4.5-paddle-bubble --compare-only
+```
+
+The combined manifest keeps main and quoted regions separate. Expected text never
+participates in line composition. Reports retain raw line strings, boxes, composed
+text, exactness/CER and separate detection/recognition/total timings. `rec_scores`
+remain diagnostic only. Current evidence is 78/84 exact vs routed 71/84, but three
+new single-line punctuation substitutions prevent claiming a regression-free replacement.
+
+API sources consulted 2026-09-21: [official TextDetection](https://www.paddleocr.ai/main/en/version3.x/module_usage/text_detection.html)
+and [TextRecognition](https://www.paddleocr.ai/main/en/version3.x/module_usage/text_recognition.html).
+
+The third experimental candidate preserves raw whole-bubble recognition for zero or
+one detected line and uses line crops only for two or more lines. Reuse the exact
+combined corpus and baselines above:
+
+```powershell
+& "$env:LOCALAPPDATA\WeChatJevHud\paddle-ocr\.venv\Scripts\python.exe" `
+  scripts/paddle_bubble_benchmark.py `
+  --manifest .ocr-cache/phase4.5-paddle-bubble/manifest.json `
+  --output .ocr-cache/phase4.5-paddle-bubble --unified
+python scripts/compare_unified_bubble.py --root .ocr-cache/phase4.5-paddle-bubble
+```
+
+`unified-report.md` contains every candidate row, and `unified-comparison.md` reports
+all requested cohorts plus improvements/regressions. Original routed and line-rec
+results remain intact. The outcome is 79/84 exact, preserving 46/47 calibration
+single-line and 7/7 multiline/quote. This historical benchmark recommended the production
+change now implemented under D-023. Its benchmark itself left the production path
+unchanged by this experiment. Scores are never correctness probabilities.
+
 ## Secrets and later phases
 
-No TypeSafe/Jev code runs through Phase 4. The official TypeSafe skill is installed at `.agents/skills/typesafe-ai/`. Before Phase 5 implementation, the live-docs gate in `docs/ACCEPTANCE.md` still applies.
+No TypeSafe/Jev code runs through Phase 4.5. The official TypeSafe skill is installed at `.agents/skills/typesafe-ai/`. Before Phase 5 implementation, the live-docs gate in `docs/ACCEPTANCE.md` still applies.
 
 When Jev is implemented later, keep the key outside the repository, for example in the current Windows user's environment:
 

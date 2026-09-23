@@ -389,6 +389,10 @@ CJK OCR artifacts measurable.
 
 ## D-018 — Message observation uses epoch-scoped ordered reconciliation
 
+Occurrence tie-breaking, title representation, and partial visibility were refined by
+D-024 after additional Phase 4.5 real-machine regressions. The original Phase 4
+acceptance remains historical evidence, not proof that these new cases passed.
+
 **Decision**
 
 Phase 4 places stateful observation behind `IMessageObserver`. It establishes a
@@ -426,7 +430,7 @@ anchor; finalizing an empty baseline clears provisional settling messages and ta
 This baseline-settling state is separate from conversation-identity evidence: it fixes
 render timing without changing the strong/weak identity hierarchy.
 
-**Scrolling policy**
+**Scrolling policy (historical; NEW authorization superseded by D-025)**
 
 The observer remembers the chronological live tail. Bubbles discovered before or away
 from that anchor are conservative history, while unmatched suffixes after the known
@@ -459,3 +463,422 @@ emits no old messages as live-new.
 - Rebase from two permissive visual matches anywhere in recent history.
 - Treat a permissive perceptual match to the old live tail as strong continuity.
 - Persist screenshots or raw conversation history to support reconciliation.
+
+---
+
+## D-019 — Production OCR uses routed evidence, not Paddle score trust
+
+**Historical: extraction/routing and normal secondary-engine agreement superseded by D-023.
+Uncalibrated-score and untrusted-fallback constraints remain.**
+
+**Decision**
+
+Phase 4.5 runs `PP-OCRv6_small_rec` through a persistent Windows-native Python worker
+for scale-aware single-line crops only. The worker uses PaddleOCR recognition without
+Paddle text detection, loads and warms once, transfers image bytes in memory, and
+reports an ID-correlated UTF-8 protocol plus exact runtime/device metadata. Multiline,
+wrapped, quoted, and ambiguous crops remain on the existing Adaptive path.
+
+Paddle `rec_score` is retained only as `EngineScoreKind = paddle_rec_score`; it never
+populates `OcrConfidence` or establishes semantic trust. Paddle-only results and
+Paddle/secondary disagreement remain untrusted. Adaptive-only and worker-fallback
+output remains available as a text candidate but is untrusted in the production
+router. A new agreement result is trusted only when Paddle, the selected Adaptive
+output, and a separate confidence-bearing OCR candidate normalize to the same text.
+Worker failure falls back to Adaptive without terminating observation or losing the
+candidate text.
+
+**Reason**
+
+Phase 3 showed strong short-Chinese accuracy from the small model, no benefit from the
+medium model, high-score wrong Paddle outputs, and multiline truncation. An initial
+Phase 4.5 two-engine policy also reproduced a shared wrong result (`啦` read as `哒`) in
+both Paddle and Windows OCR. Requiring stronger independent evidence reduced the
+18-crop production-policy evaluation from one trusted-wrong result to zero without
+using an invented Paddle score threshold.
+
+The subsequent 52-crop calibration exposed six trusted-wrong results: three cases
+where trusted Adaptive output overrode a correct disagreeing Paddle result, and three
+high-confidence Adaptive-only multiline errors. Production trust was therefore
+tightened again: disagreement and Adaptive-only output can no longer become
+semantic-ready. This preserves diagnostic/candidate text while preferring safe failure.
+
+**Rejected alternatives**
+
+- Launch one Python process per crop.
+- Make WSL part of the installed application runtime.
+- Use `PP-OCRv6_medium_rec` after it showed no accuracy benefit.
+- Use Paddle text detection instead of the accepted bubble detector.
+- Route a whole multiline/quoted crop through Paddle recognition.
+- Map `rec_score` to `OcrConfidence` or trust a high score.
+- Trust agreement between Paddle and uncalibrated Windows OCR without additional
+  independent evidence.
+
+---
+
+## D-020 — Audit OCR image evidence before further trust tuning
+
+**Decision**
+
+Phase 4.5 manual observer acceptance and further production trust-policy changes are
+paused while input preparation is audited on the same real bubble crops at 100% and
+150% DPI. The private audit compares the raw whole bubble, a contrast-derived text ROI
+with safe padding, text-band normalization at 32/40/48 px using nearest, bicubic, and
+Lanczos interpolation, and a conservative grayscale/background normalization. It uses
+one `PP-OCRv6_small_rec` instance and does not use Paddle text detection, perspective
+correction, deskew, dewarp, or aggressive thresholding.
+
+The audit is evidence only: it does not change production preprocessing, routing, or
+trust. Paddle `rec_score` remains uncalibrated. Agreement among preprocessing variants
+must not be described as independent-engine agreement. Private crops, variants, and
+reports remain under `.ocr-cache` and are manually inspected before any policy change.
+
+**Reason**
+
+The 52-crop corpus showed 46/47 exact Paddle single-line results but only 6/52
+semantic-ready results, while the real observer exposed both exact-but-untrusted output
+and genuine English recognition errors. Image-input quality and evidence/trust policy
+are therefore separate problems and must be measured separately before either is
+changed.
+
+**Audit outcome and follow-up**
+
+All 196 runs (14 crops × 14 variants) were raw/normalized exact, including 14/14 raw
+whole bubbles. No variant demonstrated improvement. Freeze production Paddle input
+as raw bubble crops; ROI, resampling and grayscale remain experiments only.
+
+The next investigation reproduced a routing defect: rounded border pixels produced
+two false row bands at 144 DPI. Routing excludes boundary-connected contrast regions
+and scales row-band thresholds from estimated glyph height. This mask is used only
+for route selection and never replaces OCR pixels. Trust policy remains unchanged
+pending routing acceptance. Native-pixel HTML inspection replaces table-fit images
+for judging sharpness.
+
+---
+
+## D-021 — Evaluate Paddle detection only inside already-isolated bubbles
+
+The user explicitly superseded the earlier prohibition on Paddle text detection for
+an isolated Phase 4.5 benchmark. Phase 2 still owns message-bubble detection. The
+experiment uses `PP-OCRv6_small_det` only inside each bubble/independent quote crop,
+then `PP-OCRv6_small_rec` per line. Both models are loaded/warmed once in a native
+Windows process. Orientation, unwarping and line-orientation modules are not created.
+Axis-aligned line bounds are cropped without perspective correction. Per-line raw
+strings are retained; CJK wraps concatenate and Latin wraps receive a separating
+space. This composition is explicit and independent of expected labels.
+
+The 84-entry real-crop comparison (76 byte-distinct PNGs) improved raw/normalized
+exactness from routed 71/84 to 78/84. Seven multiline/quote entries were all exact,
+including a three-line English crop. Both DPI cohorts remained 7/7. However,
+calibration single-line exactness decreased from 46/47 to 44/47 due to three new
+full-width/ASCII punctuation substitutions (one old punctuation-space error improved).
+Two existing Remote glyph errors remain. These scores do not establish trust.
+
+Production routing, worker protocol and trust are unchanged by this experiment.
+The architecture is promising, but the router is not deleted pending review of the
+single-line regression and broader paired-DPI multiline evidence. No generic score
+threshold or Adaptive-agreement trust policy is introduced.
+
+---
+
+## D-022 — Unified Paddle extraction is the recommended next production candidate
+
+The isolated follow-up experiment runs small detection on every pre-isolated crop.
+Zero or one detection uses the original whole bubble with small recognition; two or
+more detections reuse D-021 line cropping/order/composition. Zero detection does not
+select Adaptive. No preprocessing or detector-box padding is added.
+
+On the same 84 entries / 76 byte-distinct crops, Unified is 79/84 raw/normalized
+exact versus detector-line-rec 78/84 and current routed 71/84. Calibration single-line
+accuracy is restored to 46/47 while multiline/independent quote remains 7/7. Both
+single-line DPI sets remain 7/7. There are no new errors relative to current routed
+or same-run raw single-line recognition. Three punctuation-width errors are fixed;
+two English samples lose a comma-following space that detector-line-rec preserved.
+Those two failures were already present in raw whole-bubble recognition.
+
+Recommend removing `ScaleAwareOcrRoutingPolicy` from the normal production path in a
+separately authorized implementation, using Unified extraction and retaining Adaptive
+only for runtime failure as explicitly untrusted fallback. This benchmark does not
+make that production change or establish trust. Existing Remote glyph errors and
+Latin wrap/spacing ambiguity remain. Real zero-detection behavior was not observed;
+its whole-crop branch has deterministic test coverage only. Dual-DPI multiline
+coverage remains limited. Phase 4.5 is IN PROGRESS.
+
+---
+
+## D-023 — Unified Paddle is the production extractor; trust calibration is separate
+
+The extraction decision remains current; always-untrusted behavior is superseded by
+D-028's accepted V0 residual-risk hard gate.
+
+The user accepted D-022's Unified benchmark. The normal observer now calls one
+persistent native Windows worker containing `PP-OCRv6_small_det` and
+`PP-OCRv6_small_rec`. Both load and warm once. Detection only segments text inside
+Phase 2's isolated bubble; it never locates messages. Zero/one detection recognizes
+the original whole crop, while 2+ recognize clipped, reading-ordered line crops using
+the benchmark's composition rules. No padding/preprocessing/document transforms.
+
+This supersedes D-019's custom single-line router, normal multiline Adaptive route
+and normal Paddle/Adaptive agreement. Adaptive is now runtime-failure-only and always
+untrusted. Successful Paddle (including zero detections and empty recognition) never
+calls Adaptive. The old scale-aware analyzer remains only for experimental diagnostics.
+
+This is extraction, not new trust calibration: non-empty Paddle stays LowConfidence,
+NoText stays NoText, Paddle OcrConfidence is null, and per-line rec_score is diagnostic.
+Main/quote crops remain separate. Main crops expose unknown quote separation rather
+than claiming composed quote/reply text is trusted. No new quote-layout subsystem.
+
+Actual production .NET API parity on the immutable 84 entries / 76 distinct crops:
+all final text, line counts and boxes match the accepted benchmark, 79/84 exact;
+calibration single-line 46/47; multiline/quote 7/7; both DPI cohorts 7/7; no fallback.
+Observed wrong outputs remain untrusted. Real observer acceptance and subsequent
+trust calibration are separate remaining gates; Phase 4.5 is not PASS.
+
+---
+
+## D-024 — Observer occurrences, title ink and visible completeness
+
+The 2026-09-22 real run exposed Observer bugs without a Paddle failure: two equal
+appends received different IDs but the second was History; chat A→B→A stayed in one
+epoch; a historical multiline crop produced different text on rediscovery (clipping
+was suspected, not proven by the old log).
+
+Previous-visible occurrences now anchor monotonic alignment before older history can
+fill gaps. Equal-length alignments minimize displacement after a global translation/
+scale estimate from unique strong visual neighbors. Stationary complete previous
+occurrences support an appended suffix even without a different-text anchor. Moving
+all-identical views without a reliable anchor remain conservatively suppressed.
+Exactly aliased sampled views (a whole-row scroll indistinguishable from an append)
+cannot be perfectly resolved from these inputs; ordinary scrolling is tested, not an
+arbitrary-history guarantee. Text-specific cases and a global seen-text set are rejected.
+
+Conversation evidence uses the dominant title-ink band, tight capture-relative bounds,
+area-normalized occupancy and local glyph-scale differences plus aspect distance.
+Dynamic right-side controls and separate title-bar ink are excluded. Structured
+visual/aspect distances accompany the existing previous-visible continuity and stable
+three-observation switch gate. A stable-layout title mismatch needs broad, diverse
+previous-visible continuity to rebase, not two generic short bubble silhouettes.
+Cached OCR from an unaccepted old identity must not bootstrap a new identity.
+No HWND title or header OCR is used. Empty/no-ink views retain conservative fallback.
+
+Boundary-touching candidates are explicitly partial. They do not invoke OCR or become
+semantic-ready. A new partial is an empty, incomplete placeholder, not complete history
+text. Association through a surviving edge requires a reliable neighboring translation
+anchor; geometry alone cannot borrow another message's cached text. When fully visible,
+an incomplete placeholder is OCRed once and updated under the same ID where alignment
+supports it. Existing complete text is never replaced by partial OCR. Reusing full text
+after clipping additionally requires the stored complete crop fingerprint; otherwise
+independent complete-crop OCR must agree before retaining that known identity.
+Completeness changes are Observer evidence safety, not OCR trust recalibration.
+
+Unified Paddle extraction, score semantics and trust calibration are unchanged.
+Real-machine repeat/switch/partial-scroll acceptance is still required; no Phase 5.
+
+---
+
+## D-025 — Live-edge append detection precedes history reconciliation
+
+The user requested a separate append detector after repeated-message real runs showed
+that generic alignment plus a matched-tail index could both miss legitimate equal
+appends and emit scrolled history. D-024's title identity and completeness behavior
+remain unchanged; its generic-match-based NEW authorization is superseded.
+
+`LiveEdgeAppendDetector` compares the immediately previous visible sequence with the
+current sequence before history reconciliation. An established baseline supplies an
+inferred live edge, not proof from a WeChat API/scrollbar. Stable identity/layout and
+the known previous tail are required. Full crop fingerprints plus side/shape match
+ordered occurrences. A stationary complete prefix reserves its unmatched bottom suffix
+as LiveNew, including all-equal sequences. A translated extension needs a mutually
+unique retained anchor and consistent upward translation; any dropped prefix must
+project outside the viewport or match an explicitly top-clipped historical prefix.
+Partial appended suffixes and ambiguous motion are suppressed. There are no
+text-specific cases or extra perceptual-match thresholds.
+
+Accepted occurrence bindings and the suffix are reserved before recent-history
+matching or OCR reuse can consume them. Generic history alignment no longer authorizes
+NEW. Returning to the known tail can re-arm the next observation, but cannot turn
+history in the returning frame into NEW. Baseline, pending identity and layout gates
+still suppress appends; the established empty-baseline path remains supported.
+Current visible crop fingerprints are separate from complete OCR-cache provenance,
+so a DPI rerender cannot permanently disarm subsequent appends or weaken cache safety.
+
+Pixel-identical all-equal full-viewport shifts remain ambiguous: without a unique
+anchor or stationary growth they are not claimed NEW. Reliable arbitrary bottom-edge
+knowledge would require additional evidence, not more LCS thresholds. The earlier
+bottom-clipped multiline completeness bug is still a separate manual blocker; this
+change does not claim to fix completeness, OCR, trust or conversation identity.
+
+## D-026 — Visible completeness requires edge evidence, not containment
+
+The observed 15px historical fragment ended two pixels above the chat ROI boundary;
+the old one-pixel guard incorrectly allowed OCR. The detector intentionally retains
+small components for reconciliation (minimum height can be 12px); raising its global
+minimum would discard legitimate scale-dependent bubbles and is not the fix.
+
+Observer completeness now estimates nominal height from the smallest clearly interior
+bubble in the current frame. The boundary-risk band is 20% of that height (candidate
+height if unavailable). Near an edge, both rounded background caps must be closed to
+accept a full bubble; containment alone is insufficient. Touching/crossing is partial.
+Cap evidence compares dominant-background row widths over 12% of nominal height;
+short fragments below 75% of nominal receive an explicit suspicious-height reason.
+These are initial fixture-tested heuristics, not a calibrated universal classifier;
+the paired real scroll fixture and manual acceptance remain required.
+
+Evidence includes boundary distances, nominal/observed height, ratio, risk, cap checks
+and reason. Partials retain existing no-OCR/no-NEW/no-semantic-ready policy and cannot
+overwrite complete text. Surviving-edge association uses the nearer boundary even
+when clipping leaves a small apparent gap. D-025 append detection, identity, Unified
+extraction and trust are unchanged. No Phase 4.5 PASS is claimed.
+
+The subsequent real paired fixture disproved completeness for a 496×26 bottom
+fragment 2px from the ROI boundary at 144 DPI (wrongly Complete); its full 496×111
+version was captured 13px from the boundary. The user explicitly deferred this blocker
+while authorizing D-027. D-026 is not manually accepted and must be repaired later.
+
+## D-027 — Evaluate trust separately; same-model stability is not correctness
+
+Phase 4.5B is isolated Python evaluation, not a production trust change. Reuse the
+unchanged Unified extraction function and compare raw repeat, single-line detector-crop
+diagnostic and high-quality resize diagnostic. Expected labels only evaluate outcomes;
+they never participate in candidate decisions. No Adaptive normal agreement, raw-score
+threshold, production preprocessing or Observer changes.
+
+Hard safety requirements precede any candidate: fully visible, complete non-empty
+text, normally completed extraction, no runtime fallback, supported structure/Unicode,
+and verified semantic-region separation. Offline manually inspected region evidence
+does not grant production main crops verified quote separation automatically.
+
+The strict stability proposal improves coverage but still trusts two distinct stable
+substantive errors across all tested representations. Reject it as sufficient positive
+trust. Keep it only as exploratory negative evidence of disagreement; do not blacklist
+failing words, whitelist sides, or call repeated model agreement independent confidence.
+Non-exact raw output, normalized equality, semantic equivalence, dangerous error and
+polarity error are separate fields; non-exact semantic labels stay unknown until review.
+Full results and limitations: `docs/PHASE45B_TRUST_CALIBRATION.md`.
+
+## D-028 — Freeze V0 extraction and accept bounded residual OCR risk
+
+The user stopped further OCR/trust research. Unified Paddle (small_det inside a
+Phase 2 bubble; original whole crop for 0/1 lines, ordered line crops for 2+) remains
+the sole normal text source. Adaptive is runtime-failure-only and always untrusted.
+No verifier, stability probe, score threshold, side rule or polarity preprocessing
+is added. D-023's always-untrusted production policy is superseded by an explicit
+V0 hard gate, not a claim of calibrated accuracy.
+
+Evidence: 124 byte-distinct reviewed real crops, 119 literal exact; all five
+non-exact Paddle crops are human-labelled semantically equivalent, non-dangerous
+and non-polarity-changing. Independent Windows/Tesseract raw-agreement coverage was
+too low to justify production complexity. This is limited observed evidence, NOT
+proof that future OCR cannot change meaning. V0 explicitly accepts that residual
+risk. SemanticReady must never imply TranscriptExact.
+
+Required hard facts: normally completed Unified extraction, no runtime fallback,
+non-empty raw text, complete-text evidence, verified semantic-region separation,
+valid line structure, and outside a conservative viewport-edge exclusion zone.
+Scores and expected labels never enter this decision. Region verification cannot
+be manufactured from successful OCR alone. The user approved a conservative
+single-background-region inspector, separate from Phase 2 detection and Paddle input.
+It checks a consistent inset perimeter/background and rejects large solid embedded
+panels or ambiguous interiors. It never splits quotes or changes OCR pixels. The
+current region is checked even when complete OCR text is reused; ambiguity disables
+semantic readiness without rewriting stored text. A quote rendered indistinguishably
+on the same background may evade this limited visual check; no universal quote parser
+or semantic separation guarantee is claimed. This remains part of accepted V0 risk.
+
+The edge zone is round(6 * current capture DPI / 96) physical pixels at both usable
+chat ROI boundaries. Distances strictly less than that guard exclude semantic use,
+OCR of newly incomplete evidence and complete-text replacement; visual reconciliation
+continues. At 144 DPI, the known 496x26 / 2px-gap fragment is excluded; the full
+496x111 / 13px-gap counterpart is outside the guard. This is a deliberate conservative
+V0 exclusion, not a fix or universal proof for the rounded-cap completeness classifier.
+Existing diagnostics may remain. D-025 append and identity algorithms remain frozen.
+
+Narrow observed append exception: a real translated append preserved seven exact
+ordered crop identities but the detector omitted the 14px remainder of a top-clipped
+83px bubble. Permit one missing clipped prefix only if it crosses the viewport top
+and its translated bottom precedes the first retained bubble. Fully interior omissions
+remain rejected; all existing exact identity, unique-anchor, translation and live-edge
+requirements remain. This is not a general tolerance/scroll-inference redesign.
+
+Smoke regression clarification: structural visibility comes exclusively from
+`BubbleCompletenessAnalyzer`. Semantic edge exclusion must never be folded into
+`IsFullyVisible`, live-tail continuity, or `_atLiveEdge`. Doing so caused genuine
+appends to become History. Complete-text eligibility combines structural visibility
+with outside-edge evidence, separately. A structurally valid LiveNew may remain
+semantically untrusted. Preserve previously complete text on edge-excluded views,
+but disable current semantic readiness. Origin is never rewritten by OCR/trust.
+
+Completion requires the final short Self/Remote, negation, mixed, two-line, repeated
+append, scroll, A-B-A, known partial and minimize/restore real smoke workflow. No
+Phase 4.5 PASS or PR-ready claim before that gate passes. Only a clear meaning-changing
+production failure reopens OCR research; a literal mismatch alone does not.
+
+## D-029 — Recover known history occurrences before previous-viewport alignment
+
+The final scroll safety run had zero NEW events and no epoch changes, but two old
+equal-looking messages returned with a new History ID and a shifted old ID. This
+can duplicate recent context and is not accepted as cosmetic drift.
+
+Only the non-append history path changes: try an ordered mapping against the bounded
+known chronological timeline before geometry-weighted previous-visible alignment.
+Prefer exact stored complete crop identity, then existing strong visual/shape or
+independently observed trusted text evidence. A fully explained subsequence reuses
+existing occurrences in chronological order, including ambiguous repeated-only views.
+Partial discoveries require an anchor unique on both sides; unmatched gaps can still
+discover genuine older history. Known bindings are not overwritten by a geometry-only
+OCR reuse pass. OCR text alone is not a globally unique message identity.
+
+The append path and its reserved suffix bypass this step entirely: a genuinely new
+equal message still obtains its own LiveNew ID. No append, OCR, trust, completeness,
+conversation-identity or epoch-switch algorithm changes. Recovery is scoped to the
+current epoch and messages still retained in the configured in-memory buffer.
+
+The user separately accepts the 463 -> 456px top-clipped-width append false negative
+as a V0 limitation. Keep strict width/hash matching; reopen only if it repeatedly
+affects normal use. Freeze history reconciliation after the final manual return-window
+check passes; no further OCR/Observer investigation is part of this closeout.
+
+## D-030 — Unbound incomplete History is transient visual evidence
+
+The D-029 manual run retained the targeted repeated IDs and emitted no NEW, but the
+state audit found clipped-edge placeholders inserted between known chronological
+messages and retained after return. This is persistent timeline pollution, not merely
+a best-effort visible association.
+
+Before any ID allocation, an unmatched History candidate without complete-text
+evidence is excluded from persistent message creation and insertion. It remains in
+frame-local visibility diagnostics and is omitted from the logical visible snapshot.
+No fake ID is created. Matched known partials still reuse their IDs and preserve
+complete text. Fully evidenced unseen older history still allocates and inserts a
+History message. Accepted live append suffixes are unaffected. No matching, append,
+OCR, trust, completeness, identity or epoch predicate changes.
+
+V0 may accept ambiguous historical visible-ID reassociation only when persistent
+content/order is not polluted and scrolling emits no NEW or epoch change. Final
+manual scroll and protected-state audit are required before marking Phase 4.5 PASS.
+
+## D-031 — Phase 4.5 V0 accepted; freeze perception/observer work
+
+On 2026-09-24 the user-authorized final safety gate passed on `cde5ebf`: 27 real
+scroll state snapshots, zero NEW, epoch unchanged, no Adaptive fallback, no unbound
+incomplete History allocations. All protected fields and relative order stayed
+unchanged for all 25 retained IDs. The 9-message baseline expanded through 16 complete
+older-history discoveries, not fragment placeholders; returning to the known viewport
+did not add messages. The targeted repeated occurrences retained their IDs.
+
+Without a native WeChat message identifier, exact re-identification of ambiguous
+repeated historical bubbles after arbitrary scrolling is best-effort. A visible old
+bubble may temporarily associate with another compatible retained historical ID.
+This association is not a semantic guarantee. V0's safety contract is no scroll NEW,
+no scroll epoch changes, and no duplicate/mutated persistent content from incomplete
+fragments; the final run verified these properties, not universal identity accuracy.
+
+Accept the strict clipped-width (463 -> 456px) append false negative rather than
+loosening width/hash matching and risking history replay. Reopen only if repeated
+in normal use. Retain D-028 residual OCR risk and the 6 DIP semantic edge guard.
+Fresh Remote sending was unavailable in the last smoke; do not imply it was tested.
+Earlier real/automated evidence is retained, not represented as a new live run.
+
+Phase 4.5 is PASS for V0. Freeze append and history reconciliation, OCR extraction
+and trust; no more calibration/verifiers/heuristics. PR #5 becomes ready for external
+review, not automatically merged. Phase 5/Jev is a separate future task.

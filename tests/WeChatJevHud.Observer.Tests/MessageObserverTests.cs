@@ -9,6 +9,421 @@ namespace WeChatJevHud.Observer.Tests;
 
 public sealed class MessageObserverTests
 {
+    [Theory]
+    [InlineData(20)]
+    [InlineData(190)]
+    public async Task Unbound_incomplete_history_is_transient_without_consuming_ids(int fragmentY)
+    {
+        var known = new[] { Bubble(12, 70, 120, MessageSide.Self), Bubble(12, 110, 120, MessageSide.Self),
+            Bubble(12, 150, 120, MessageSide.Self) };
+        var fragment = new DetectedBubble(new(12, fragmentY, 40, 10), MessageSide.Self, .94);
+        var older = Bubble(100, 30, 220, MessageSide.Remote);
+        var ocr = new StubOcrEngine(Ocr("好"), Ocr("好"), Ocr("好"), Ocr("older"));
+        var observer = CreateObserver(new StubBubbleDetector(known, [fragment], known, [older, .. known]), ocr);
+        var original = Frame(10, known.Select(b => (b.Bounds, (byte)120)).ToArray());
+        await observer.ObserveAsync(original, default);
+        var before = observer.State.Messages.ToArray();
+        var result = await observer.ObserveAsync(Frame(10, [(fragment.Bounds, (byte)120)]), default);
+        Assert.Empty(result.MessagesObserved);
+        Assert.Empty(result.NewMessages);
+        Assert.Empty(observer.State.VisibleMessages);
+        Assert.Equal(before.Select(m => m.Id), observer.State.Messages.Select(m => m.Id));
+        Assert.Single(result.BubbleVisibility!); // diagnostic evidence is retained without an ID
+        Assert.Equal(3, ocr.Calls);
+        await observer.ObserveAsync(original, default);
+        Assert.Equal(before.Select(m => m.Id), observer.State.VisibleMessages.Select(m => m.LogicalMessageId));
+        Assert.Equal(before.Select(Content), observer.State.Messages.Select(Content));
+        var discovery = await observer.ObserveAsync(Frame(10,
+            new[] { (older.Bounds, (byte)220) }.Concat(known.Select(b => (b.Bounds, (byte)120))).ToArray()), default);
+        var message = Assert.Single(discovery.MessagesObserved);
+        Assert.Equal("e0001-m000004", message.Id);
+        Assert.Equal(MessageObservationKind.History, message.Origin);
+        Assert.Equal(4, observer.State.Messages.Count);
+        Assert.Equal(0, observer.Counters.MessagesEmitted);
+        Assert.Equal(1, observer.State.Epoch!.Id);
+
+        static object Content(ObservedMessage m) => new
+        {
+            m.Id,
+            m.ConversationEpochId,
+            m.NormalizedText,
+            m.RawText,
+            m.Origin,
+            m.FirstObservedAt,
+            m.HasCompleteText,
+            m.CompleteCropFingerprint
+        };
+    }
+
+    [Fact]
+    public async Task Known_history_window_allows_one_genuinely_unseen_older_message()
+    {
+        var a = Bubble(12, 80, 80, MessageSide.Self);
+        var first = Bubble(12, 120, 120, MessageSide.Self);
+        var second = Bubble(12, 160, 120, MessageSide.Self);
+        var old = Bubble(12, 40, 220, MessageSide.Remote);
+        var observer = CreateObserver(new StubBubbleDetector([a, first, second], [old, a, first, second], [a, first, second]),
+            new StubOcrEngine(Ocr("anchor"), Ocr("好"), Ocr("好"), Ocr("older history")));
+        var baseline = Frame(10, [(a.Bounds, (byte)80), (first.Bounds, (byte)120), (second.Bounds, (byte)120)]);
+        await observer.ObserveAsync(baseline, default);
+        var ids = observer.State.VisibleMessages.Select(m => m.LogicalMessageId).ToArray();
+        var discovery = await observer.ObserveAsync(Frame(10, [(old.Bounds, (byte)220), (a.Bounds, (byte)80),
+            (first.Bounds, (byte)120), (second.Bounds, (byte)120)]), default);
+        Assert.Equal(MessageObservationKind.History, Assert.Single(discovery.MessagesObserved).Origin);
+        Assert.Equal(ids, observer.State.VisibleMessages.Skip(1).Select(m => m.LogicalMessageId));
+        Assert.Equal(4, observer.State.Messages.Count);
+        await observer.ObserveAsync(baseline, default);
+        Assert.Equal(ids, observer.State.VisibleMessages.Select(m => m.LogicalMessageId));
+        Assert.Equal(4, observer.State.Messages.Count);
+        Assert.Equal(0, observer.Counters.MessagesEmitted);
+    }
+
+    [Fact]
+    public async Task History_window_never_consumes_anchor_and_two_equal_live_suffixes()
+    {
+        var old = Bubble(12, 60, 120, MessageSide.Self);
+        var anchor = Bubble(12, 100, 80, MessageSide.Self);
+        var first = Bubble(12, 140, 120, MessageSide.Self);
+        var second = Bubble(12, 180, 120, MessageSide.Self);
+        var observer = CreateObserver(new StubBubbleDetector([old], [old, anchor], [old, anchor, first], [old, anchor, first, second]),
+            new StubOcrEngine(Ocr("好"), Ocr("anchor"), Ocr("好"), Ocr("好")),
+            chatRegionLocator: new SequencedChatRegionLocator(new CapturePixelRect(0, 30, 300, 270)));
+        CapturedFrame F(params DetectedBubble[] bubbles) => Frame(300, 300, 10,
+            bubbles.Select(b => (b.Bounds, b == anchor ? (byte)80 : (byte)120)).ToArray());
+        await observer.ObserveAsync(F(old), default);
+        var oldId = observer.State.Messages.Single().Id;
+        var a = Assert.Single((await observer.ObserveAsync(F(old, anchor), default)).NewMessages);
+        var b = Assert.Single((await observer.ObserveAsync(F(old, anchor, first), default)).NewMessages);
+        var c = Assert.Single((await observer.ObserveAsync(F(old, anchor, first, second), default)).NewMessages);
+        Assert.Equal(4, new[] { oldId, a.Id, b.Id, c.Id }.Distinct().Count());
+        Assert.Equal(3, observer.Counters.MessagesEmitted);
+        Assert.Equal(new[] { oldId, a.Id, b.Id, c.Id }, observer.State.VisibleMessages.Select(m => m.LogicalMessageId));
+    }
+
+    [Fact]
+    public async Task Returning_to_anchored_history_preserves_repeated_occurrences_and_timeline_count()
+    {
+        var a = Bubble(12, 40, 80, MessageSide.Self);
+        var first = Bubble(12, 80, 120, MessageSide.Self);
+        var second = Bubble(12, 120, 120, MessageSide.Self);
+        var b = Bubble(12, 160, 200, MessageSide.Self);
+        var shifted = first with { Bounds = first.Bounds with { Y = 120 } };
+        var observer = CreateObserver(new StubBubbleDetector([a, first, second, b], [first], [shifted], [a, first, second, b]),
+            new StubOcrEngine(Ocr("A"), Ocr("好"), Ocr("好"), Ocr("B")));
+        var original = Frame(10, [(a.Bounds, (byte)80), (first.Bounds, (byte)120), (second.Bounds, (byte)120), (b.Bounds, (byte)200)]);
+        await observer.ObserveAsync(original, default);
+        var ids = observer.State.VisibleMessages.Select(m => m.LogicalMessageId).ToArray();
+        await observer.ObserveAsync(Frame(10, [(first.Bounds, (byte)120)]), default);
+        await observer.ObserveAsync(Frame(10, [(shifted.Bounds, (byte)120)]), default);
+        var returned = await observer.ObserveAsync(original, default);
+        Assert.Equal(ids, observer.State.VisibleMessages.Select(m => m.LogicalMessageId));
+        Assert.Equal(4, observer.State.Messages.Count);
+        Assert.Empty(returned.MessagesObserved);
+        Assert.Equal(0, returned.Counters.MessagesEmitted);
+        Assert.Equal(1, returned.Epoch.Id);
+    }
+
+    [Fact]
+    public async Task Edge_excluded_structurally_full_match_preserves_complete_text_but_disables_semantics()
+    {
+        var roi = new CapturePixelRect(377, 120, 771, 421);
+        var safe = new DetectedBubble(new(700, 474, 180, 54), MessageSide.Self, .94);
+        var edge = safe with { Bounds = safe.Bounds with { Y = 485 } };
+        var ocr = new StubOcrEngine(Ocr("retained complete text"));
+        var observer = CreateObserver(new StubBubbleDetector([safe], [edge], [safe]), ocr,
+            identityProvider: new StubConversationIdentityProvider(Identity(1)),
+            chatRegionLocator: new SequencedChatRegionLocator(roi));
+        var initial = await observer.ObserveAsync(BubbleCompletenessTests.Shapes(roi, (safe.Bounds, 5)), default);
+        var id = Assert.Single(initial.MessagesObserved).Id;
+        await observer.ObserveAsync(BubbleCompletenessTests.Shapes(roi, (edge.Bounds, 5)), default);
+        var current = observer.State.Messages.Single(m => m.Id == id);
+        Assert.True(current.IsFullyVisible);
+        Assert.True(current.HasCompleteText);
+        Assert.False(current.OutsideSemanticEdgeGuard);
+        Assert.False(current.IsTrustedForSemantics);
+        Assert.Equal("retained complete text", current.RawText);
+        await observer.ObserveAsync(BubbleCompletenessTests.Shapes(roi, (safe.Bounds, 5)), default);
+        Assert.True(observer.State.Messages.Single(m => m.Id == id).IsTrustedForSemantics);
+        Assert.Equal(1, ocr.Calls);
+    }
+
+    [Fact]
+    public async Task Semantic_edge_tail_keeps_live_edge_and_translated_equal_appends_are_new()
+    {
+        var roi = new CapturePixelRect(377, 120, 771, 421);
+        DetectedBubble B(int y, int width) => new(new(700, y, width, 54), MessageSide.Self, .94);
+        var baseline = new[] { B(317, 160), B(485, 180) };
+        var anchor = new[] { B(233, 160), B(401, 180), B(485, 210) };
+        var first = new[] { B(149, 160), B(317, 180), B(401, 210), B(485, 64) };
+        var second = new[] { B(233, 180), B(317, 210), B(401, 64), B(485, 64) };
+        var observer = CreateObserver(new StubBubbleDetector(baseline, baseline, anchor, first, second),
+            new StubOcrEngine(Ocr("text")), identityProvider: new StubConversationIdentityProvider(Identity(1)),
+            chatRegionLocator: new SequencedChatRegionLocator(roi));
+        CapturedFrame F(DetectedBubble[] bubbles) => BubbleCompletenessTests.Shapes(roi,
+            bubbles.Select(b => (b.Bounds, 5)).ToArray());
+        await observer.ObserveAsync(F(baseline), default);
+        var edge = observer.State.Messages.Last();
+        Assert.True(edge.IsFullyVisible);
+        Assert.False(edge.HasCompleteText);
+        Assert.False(edge.IsTrustedForSemantics);
+        await observer.ObserveAsync(CloneWithFill(F(baseline), new(380, 200, 2, 2), 77), default);
+        var a = await observer.ObserveAsync(F(anchor), default);
+        Assert.NotEqual("not_stable_live_edge", a.LiveEdgeAppend!.Reason);
+        var anchorId = Assert.Single(a.NewMessages).Id;
+        var b = await observer.ObserveAsync(F(first), default);
+        var firstId = Assert.Single(b.NewMessages).Id;
+        var c = await observer.ObserveAsync(F(second), default);
+        var secondId = Assert.Single(c.NewMessages).Id;
+        Assert.NotEqual(firstId, secondId);
+        Assert.Equal(firstId, observer.State.VisibleMessages[^2].LogicalMessageId);
+        Assert.Contains(observer.State.VisibleMessages, m => m.LogicalMessageId == anchorId);
+        Assert.False(c.NewMessages[0].HasCompleteText);
+        Assert.False(c.NewMessages[0].IsTrustedForSemantics);
+        Assert.Equal(3, c.Counters.MessagesEmitted);
+    }
+
+    [Fact]
+    public async Task Region_evidence_reaches_ocr_and_ambiguous_current_region_cannot_be_semantic_ready()
+    {
+        var bubble = new DetectedBubble(new(20, 70, 130, 70), MessageSide.Remote, .94);
+        var ocr = new StubOcrEngine(Ocr("complete main text"));
+        var observer = CreateObserver(new StubBubbleDetector([bubble], [bubble]), ocr);
+        await observer.ObserveAsync(Frame(10, [(bubble.Bounds, (byte)120)]), default);
+        Assert.Equal(new OcrInputEvidence(true, true, true), ocr.LastCrop!.SemanticEvidence);
+        Assert.True(Assert.Single(observer.State.Messages).IsTrustedForSemantics);
+        await observer.ObserveAsync(Frame(10, [(bubble.Bounds, (byte)120), (new CapturePixelRect(30, 104, 105, 23), (byte)80)]), default);
+        Assert.All(observer.State.Messages.Where(m => m.IsVisible), m => Assert.False(m.IsTrustedForSemantics));
+    }
+
+    [Theory]
+    [InlineData(54)]
+    [InlineData(111)]
+    [InlineData(26)]
+    public async Task Semantic_edge_guard_rejects_two_pixel_gap_even_when_caps_look_complete(int height)
+    {
+        var roi = new CapturePixelRect(377, 120, 771, 421);
+        var anchor = new DetectedBubble(new(500, 250, 150, 54), MessageSide.Self, .94);
+        var appended = new DetectedBubble(new(650, 539 - height, 200, height), MessageSide.Self, .94);
+        var ocr = new StubOcrEngine(Ocr("anchor"), Ocr("complete new text"));
+        var observer = CreateObserver(new StubBubbleDetector([anchor], [anchor, appended]), ocr,
+            identityProvider: new StubConversationIdentityProvider(Identity(1)),
+            chatRegionLocator: new SequencedChatRegionLocator(roi));
+        await observer.ObserveAsync(BubbleCompletenessTests.Shapes(roi, (anchor.Bounds, 5)), default);
+        var result = await observer.ObserveAsync(BubbleCompletenessTests.Shapes(roi, (anchor.Bounds, 5), (appended.Bounds, 5)), default);
+        // Origin is structural; the semantic edge gate must not rewrite LiveNew.
+        if (height >= 54) Assert.Single(result.NewMessages);
+        var message = observer.State.Messages.Single(m => m.BubbleRect == appended.Bounds);
+        Assert.False(message.IsTrustedForSemantics);
+        Assert.False(message.HasCompleteText);
+        Assert.Empty(message.RawText);
+        Assert.Equal(1, ocr.Calls);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Two_pixel_gap_partial_recovers_same_id_and_never_replaces_complete_text(bool top)
+    {
+        var roi = new CapturePixelRect(377, 120, 771, 421);
+        var partial = new DetectedBubble(new CapturePixelRect(524, top ? 122 : 524, 300, 15), MessageSide.Self, .94);
+        var full = partial with { Bounds = new(524, top ? 160 : 280, 300, 111) };
+        var anchor = new DetectedBubble(new(420, top ? 200 : 400, 80, 54), MessageSide.Remote, .94);
+        var moved = anchor with { Bounds = anchor.Bounds with { Y = top ? 334 : 156 } };
+        var ocr = new StubOcrEngine(Ocr("anchor"), Ocr("complete multiline text"));
+        var observer = CreateObserver(new StubBubbleDetector([partial, anchor], [full, moved], [partial, anchor], [full, moved]), ocr,
+            chatRegionLocator: new SequencedChatRegionLocator(roi));
+        var partialFrame = Frame(1148, 680, 10, [(partial.Bounds, (byte)120), (anchor.Bounds, (byte)80)]);
+        var fullFrame = Frame(1148, 680, 10, [(full.Bounds, (byte)120), (moved.Bounds, (byte)80)]);
+        var initial = await observer.ObserveAsync(partialFrame, default);
+        var id = initial.MessagesObserved.Single(m => m.Side == MessageSide.Self).Id;
+        Assert.Equal(1, ocr.Calls);
+        var complete = await observer.ObserveAsync(fullFrame, default);
+        Assert.Empty(complete.NewMessages);
+        Assert.Equal("complete multiline text", observer.State.Messages.Single(m => m.Id == id).RawText);
+        await observer.ObserveAsync(partialFrame, default);
+        var clipped = observer.State.Messages.Single(m => m.Id == id);
+        Assert.False(clipped.IsFullyVisible);
+        Assert.False(clipped.IsTrustedForSemantics);
+        Assert.Equal("complete multiline text", clipped.RawText);
+        await observer.ObserveAsync(fullFrame, default);
+        Assert.True(observer.State.Messages.Single(m => m.Id == id).IsFullyVisible);
+        Assert.Equal(2, ocr.Calls);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Fifteen_pixel_fragment_two_pixels_from_boundary_never_calls_ocr(bool top)
+    {
+        var roi = new CapturePixelRect(377, 120, 771, 421);
+        var fragment = new DetectedBubble(new CapturePixelRect(524, top ? 122 : 524, 517, 15), MessageSide.Self, .94);
+        var ocr = new StubOcrEngine(Ocr("corrupted fragment"));
+        var observer = CreateObserver(new StubBubbleDetector([fragment]), ocr,
+            chatRegionLocator: new SequencedChatRegionLocator(roi));
+        var result = await observer.ObserveAsync(Frame(1148, 680, 10, [(fragment.Bounds, (byte)120)]), default);
+        Assert.Equal(0, ocr.Calls);
+        Assert.Empty(result.NewMessages);
+        var message = Assert.Single(observer.State.Messages);
+        Assert.False(message.IsFullyVisible);
+        Assert.False(message.HasCompleteText);
+        Assert.False(message.IsTrustedForSemantics);
+        Assert.Empty(message.RawText);
+    }
+
+    [Fact]
+    public async Task Dpi_rerender_then_idle_then_append_uses_visible_fingerprint_not_ocr_cache_fingerprint()
+    {
+        var a = Bubble(12, 60, 120, MessageSide.Self);
+        var scaled = a with { Bounds = new(18, 90, 60, 36) };
+        var next = scaled with { Bounds = scaled.Bounds with { Y = 150 } };
+        var detector = new StubBubbleDetector([a], [scaled], [scaled, next]);
+        var ocr = new StubOcrEngine(Ocr("好"));
+        var observer = CreateObserver(detector, ocr, identityProvider: new StubConversationIdentityProvider(Identity(1)));
+        var baseline = await observer.ObserveAsync(Frame(10, [(a.Bounds, (byte)120)]), default);
+        var resized = Frame(300, 300, 10, [(scaled.Bounds, (byte)120)]);
+        await observer.ObserveAsync(resized, default);
+        await observer.ObserveAsync(resized, default);
+        await observer.ObserveAsync(resized, default);
+        Assert.Equal(1, ocr.Calls);
+        var result = await observer.ObserveAsync(Frame(300, 300, 10, [(scaled.Bounds, (byte)120), (next.Bounds, (byte)120)]), default);
+        Assert.Single(result.NewMessages);
+        Assert.Equal(baseline.MessagesObserved[0].Id, observer.State.VisibleMessages[0].LogicalMessageId);
+        Assert.Equal(1, result.Epoch.Id);
+        Assert.Equal(2, ocr.Calls);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public async Task Partial_old_prefix_retains_id_without_ocr_while_complete_suffix_is_new(int inset)
+    {
+        var old = Bubble(12, 30, 60, MessageSide.Remote);
+        var anchor = Bubble(12, 70, 80, MessageSide.Remote);
+        var tail = Bubble(120, 110, 120, MessageSide.Self);
+        var clipped = old with { Bounds = new(12, 20 + inset, 40, 14 - inset) };
+        var movedAnchor = anchor with { Bounds = anchor.Bounds with { Y = 50 } };
+        var movedTail = tail with { Bounds = tail.Bounds with { Y = 90 } };
+        var appended = tail with { Bounds = tail.Bounds with { Y = 130 } };
+        var ocr = new StubOcrEngine(Ocr("old full text"), Ocr("A"), Ocr("好"), Ocr("好"));
+        var observer = CreateObserver(new StubBubbleDetector([old, anchor, tail], [clipped, movedAnchor, movedTail, appended]), ocr);
+        var baseline = await observer.ObserveAsync(Frame(10, [(old.Bounds, (byte)60), (anchor.Bounds, (byte)80), (tail.Bounds, (byte)120)]), default);
+        var result = await observer.ObserveAsync(Frame(10, [(clipped.Bounds, (byte)60), (movedAnchor.Bounds, (byte)80), (movedTail.Bounds, (byte)120), (appended.Bounds, (byte)120)]), default);
+        Assert.Single(result.NewMessages);
+        Assert.Equal(4, ocr.Calls);
+        Assert.Equal(baseline.MessagesObserved.Select(m => m.Id), observer.State.VisibleMessages.Take(3).Select(m => m.LogicalMessageId));
+        Assert.Equal("old full text", observer.State.Messages[0].RawText);
+        Assert.False(observer.State.Messages[0].IsFullyVisible);
+    }
+
+    [Fact]
+    public async Task History_tail_match_cannot_authorize_suffix_when_visible_prefix_disappears_without_motion()
+    {
+        var a = Bubble(12, 60, 80, MessageSide.Remote);
+        var tail = Bubble(120, 100, 120, MessageSide.Self);
+        var history = Bubble(12, 140, 170, MessageSide.Remote);
+        var observer = CreateObserver(new StubBubbleDetector([a, tail], [tail, history]),
+            new StubOcrEngine(Ocr("A"), Ocr("tail"), Ocr("old history")));
+        await observer.ObserveAsync(Frame(10, [(a.Bounds, (byte)80), (tail.Bounds, (byte)120)]), default);
+        var result = await observer.ObserveAsync(Frame(10, [(tail.Bounds, (byte)120), (history.Bounds, (byte)170)]), default);
+        Assert.Empty(result.NewMessages);
+        Assert.Equal(MessageObservationKind.History, Assert.Single(result.MessagesObserved).Origin);
+        Assert.False(result.LiveEdgeAppend!.IsAppend);
+    }
+
+    [Fact]
+    public async Task Live_append_translation_drops_only_offscreen_prefix_and_preserves_repeat_ids()
+    {
+        var old = Bubble(12, 30, 60, MessageSide.Remote);
+        var anchor = Bubble(12, 70, 80, MessageSide.Remote);
+        var first = Bubble(120, 110, 120, MessageSide.Self);
+        var second = Bubble(120, 150, 120, MessageSide.Self);
+        var movedAnchor = anchor with { Bounds = anchor.Bounds with { Y = 30 } };
+        var movedFirst = first with { Bounds = first.Bounds with { Y = 70 } };
+        var movedSecond = second with { Bounds = second.Bounds with { Y = 110 } };
+        var appended = second;
+        var ocr = new StubOcrEngine(Ocr("old"), Ocr("A"), Ocr("好"), Ocr("好"), Ocr("好"));
+        var observer = CreateObserver(new StubBubbleDetector([old, anchor, first, second], [movedAnchor, movedFirst, movedSecond, appended]), ocr);
+        var baseline = await observer.ObserveAsync(Frame(10, [(old.Bounds, (byte)60), (anchor.Bounds, (byte)80), (first.Bounds, (byte)120), (second.Bounds, (byte)120)]), default);
+        var result = await observer.ObserveAsync(Frame(10, [(movedAnchor.Bounds, (byte)80), (movedFirst.Bounds, (byte)120), (movedSecond.Bounds, (byte)120), (appended.Bounds, (byte)120)]), default);
+        Assert.Equal(baseline.MessagesObserved.Skip(1).Select(m => m.Id), observer.State.VisibleMessages.Take(3).Select(m => m.LogicalMessageId));
+        Assert.Equal("好", Assert.Single(result.NewMessages).NormalizedText);
+        Assert.Equal(5, ocr.Calls);
+        Assert.Equal("anchored_translated_suffix", result.LiveEdgeAppend!.Reason);
+    }
+
+    [Theory]
+    [InlineData(MessageSide.Self)]
+    [InlineData(MessageSide.Remote)]
+    public async Task Four_equal_occurrences_append_in_order_then_scroll_without_new_events(MessageSide side)
+    {
+        var bubbles = Enumerable.Range(0, 4).Select(i => Bubble(12, 40 + i * 35, 120, side)).ToArray();
+        var history = Bubble(12, 145, 170, side);
+        var scrolled = new[] { bubbles[1] with { Bounds = bubbles[0].Bounds }, bubbles[2] with { Bounds = bubbles[1].Bounds }, history };
+        var detector = new StubBubbleDetector([bubbles[0]], bubbles.Take(2).ToArray(), bubbles.Take(3).ToArray(), bubbles,
+            scrolled, bubbles);
+        var observer = CreateObserver(detector, new StubOcrEngine(Ocr("好")));
+        var ids = new List<string>();
+        for (var count = 1; count <= 4; count++)
+        {
+            var result = await observer.ObserveAsync(Frame(10, bubbles.Take(count).Select(b => (b.Bounds, (byte)120)).ToArray()), default);
+            if (count == 1) ids.Add(Assert.Single(result.MessagesObserved).Id);
+            else ids.Add(Assert.Single(result.NewMessages).Id);
+            Assert.Equal(ids, observer.State.VisibleMessages.Select(m => m.LogicalMessageId));
+        }
+        var away = await observer.ObserveAsync(Frame(10, scrolled.Select(b => (b.Bounds, b == history ? (byte)170 : (byte)120)).ToArray()), default);
+        Assert.Empty(away.NewMessages);
+        var back = await observer.ObserveAsync(Frame(10, bubbles.Select(b => (b.Bounds, (byte)120)).ToArray()), default);
+        Assert.Empty(back.NewMessages);
+        Assert.Equal(3, observer.Counters.MessagesEmitted);
+    }
+
+    [Theory]
+    [InlineData(MessageSide.Self)]
+    [InlineData(MessageSide.Remote)]
+    public async Task Consecutive_equal_appends_without_distinct_anchor_emit_each_occurrence(MessageSide side)
+    {
+        var a = Bubble(12, 60, 120, side);
+        var b = Bubble(12, 100, 120, side);
+        var c = Bubble(12, 140, 120, side);
+        var detector = new StubBubbleDetector([a], [a, b], [a, b, c]);
+        var observer = CreateObserver(detector, new StubOcrEngine(Ocr("好")));
+        var baseline = await observer.ObserveAsync(Frame(10, [(a.Bounds, (byte)120)]), default);
+        var first = await observer.ObserveAsync(Frame(10, [(a.Bounds, (byte)120), (b.Bounds, (byte)120)]), default);
+        var second = await observer.ObserveAsync(Frame(10, [(a.Bounds, (byte)120), (b.Bounds, (byte)120), (c.Bounds, (byte)120)]), default);
+        Assert.Single(first.NewMessages);
+        Assert.Single(second.NewMessages);
+        Assert.Equal(3, observer.State.VisibleMessages.Select(m => m.LogicalMessageId).Distinct().Count());
+        Assert.Equal(baseline.MessagesObserved[0].Id, observer.State.VisibleMessages[0].LogicalMessageId);
+    }
+
+    [Fact]
+    public void Different_sparse_title_glyphs_are_not_the_same_identity()
+    {
+        var a = Frame(1000, 600, 25, []);
+        a = CloneWithFill(a, new CapturePixelRect(30, 22, 4, 18), 220);
+        a = CloneWithFill(a, new CapturePixelRect(30, 22, 20, 3), 220);
+        var b = Frame(1000, 600, 25, []);
+        b = CloneWithFill(b, new CapturePixelRect(30, 22, 4, 18), 220);
+        b = CloneWithFill(b, new CapturePixelRect(30, 37, 20, 3), 220);
+        var provider = new VisualConversationIdentityProvider();
+        var roi = new CapturePixelRect(0, 60, 1000, 540);
+        Assert.False(provider.Compare(provider.GetVisualEvidence(a, roi), provider.GetVisualEvidence(b, roi)).IsMatch);
+    }
+
+    [Theory]
+    [InlineData(20)]
+    [InlineData(170)]
+    public async Task Partial_multiline_candidate_does_not_call_ocr_or_create_complete_text(int y)
+    {
+        var bubble = new DetectedBubble(new CapturePixelRect(12, y, 90, 30), MessageSide.Remote, .94);
+        var ocr = new StubOcrEngine(Ocr("clipped corrupt text"));
+        var observer = CreateObserver(new StubBubbleDetector([bubble]), ocr);
+        var result = await observer.ObserveAsync(Frame(10, [(bubble.Bounds, (byte)80)]), default);
+        Assert.Equal(0, ocr.Calls);
+        Assert.False(Assert.Single(observer.State.Messages).IsTrustedForSemantics);
+        Assert.Empty(observer.State.Messages[0].RawText);
+        Assert.Empty(result.NewMessages);
+    }
 
     [Fact]
     public async Task Stable_frame_bootstraps_once_without_repeating_detection_or_ocr()
@@ -35,6 +450,241 @@ public sealed class MessageObserverTests
         Assert.Equal(1, second.Counters.BubbleDetectionRuns);
         Assert.Equal(1, second.Counters.OcrCalls);
         Assert.Equal(0, second.Counters.MessagesEmitted);
+    }
+
+    [Fact]
+    public async Task Translation_preserves_old_equal_occurrence_and_emits_only_suffix()
+    {
+        var a = Bubble(12, 50, 80, MessageSide.Remote);
+        var old = Bubble(12, 100, 120, MessageSide.Self);
+        var movedA = a with { Bounds = a.Bounds with { Y = 30 } };
+        var movedOld = old with { Bounds = old.Bounds with { Y = 80 } };
+        var appended = old with { Bounds = old.Bounds with { Y = 120 } };
+        var observer = CreateObserver(new StubBubbleDetector([a, old], [movedA, movedOld, appended]), new StubOcrEngine(Ocr("A"), Ocr("好"), Ocr("好")));
+        var baseline = await observer.ObserveAsync(Frame(10, [(a.Bounds, (byte)80), (old.Bounds, (byte)120)]), default);
+        var frame = Frame(10, [(movedA.Bounds, (byte)80), (movedOld.Bounds, (byte)120), (appended.Bounds, (byte)120)]);
+        var result = await observer.ObserveAsync(frame, default);
+        Assert.Equal(baseline.MessagesObserved[1].Id, observer.State.VisibleMessages[1].LogicalMessageId);
+        Assert.Equal(120, Assert.Single(result.NewMessages).BubbleRect.Y);
+        Assert.Contains(result.OccurrenceMatches!, m => m.PreviousId == baseline.MessagesObserved[1].Id && m.EstimatedDeltaY == -20 && m.MatchCost == 0);
+        Assert.Empty((await observer.ObserveAsync(frame, default)).NewMessages);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Partial_history_becomes_complete_once_and_preserves_text_on_reclipping(bool top)
+    {
+        var partial = new DetectedBubble(new CapturePixelRect(12, top ? 20 : 170, 90, 30), MessageSide.Remote, .94);
+        var full = partial with { Bounds = new CapturePixelRect(12, top ? 40 : 90, 90, top ? 60 : 70) };
+        var anchor = Bubble(120, top ? 100 : 130, 140, MessageSide.Self);
+        var movedAnchor = anchor with { Bounds = anchor.Bounds with { Y = top ? 150 : 50 } };
+        var ocr = new StubOcrEngine(Ocr("anchor"), Ocr("complete three line history"));
+        var observer = CreateObserver(new StubBubbleDetector([partial, anchor], [full, movedAnchor], [partial, anchor], [full, movedAnchor]), ocr);
+        var clippedFrame = Frame(10, [(partial.Bounds, (byte)80), (anchor.Bounds, (byte)140)]);
+        var fullFrame = Frame(10, [(full.Bounds, (byte)80), (movedAnchor.Bounds, (byte)140)]);
+        var initial = await observer.ObserveAsync(clippedFrame, default);
+        var id = initial.MessagesObserved.Single(m => m.Side == MessageSide.Remote).Id;
+        Assert.Equal(1, ocr.Calls);
+        Assert.False(observer.State.Messages.Single(m => m.Id == id).HasCompleteText);
+        var complete = await observer.ObserveAsync(fullFrame, default);
+        Assert.Empty(complete.NewMessages);
+        var message = observer.State.Messages.Single(m => m.Id == id);
+        Assert.Equal("complete three line history", message.RawText);
+        Assert.True(message.IsFullyVisible);
+        Assert.True(message.HasCompleteText);
+        Assert.Equal(2, ocr.Calls);
+        await observer.ObserveAsync(clippedFrame, default);
+        message = observer.State.Messages.Single(m => m.Id == id);
+        Assert.Equal("complete three line history", message.RawText);
+        Assert.False(message.IsTrustedForSemantics);
+        Assert.False(message.IsFullyVisible);
+        await observer.ObserveAsync(fullFrame, default);
+        Assert.Equal(2, ocr.Calls);
+        Assert.True(observer.State.Messages.Single(m => m.Id == id).IsTrustedForSemantics);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Real_title_provider_switches_and_never_inserts_B_into_A(bool longTitle)
+    {
+        var bubbleA = Bubble(12, 100, 80, MessageSide.Remote);
+        var bubbleB = Bubble(120, 100, 170, MessageSide.Self);
+        CapturedFrame WithTitle(DetectedBubble bubble, byte value, bool second)
+        {
+            var frame = Frame(1000, 600, 25, [(bubble.Bounds, value)]);
+            frame = CloneWithFill(frame, new CapturePixelRect(30, 22, 4, 18), 220);
+            return CloneWithFill(frame, new CapturePixelRect(30, second ? 37 : 22, second && longTitle ? 80 : 20, 3), 220);
+        }
+        var a = WithTitle(bubbleA, 80, false);
+        var b = WithTitle(bubbleB, 170, true);
+        var observer = CreateObserver(new StubBubbleDetector([bubbleA], [bubbleB], [bubbleB], [bubbleB], [bubbleB], [bubbleA], [bubbleA], [bubbleA]),
+            new StubOcrEngine(Ocr("chat A"), Ocr("chat B"), Ocr("chat A")));
+        await observer.ObserveAsync(a, default);
+        var pending = await observer.ObserveAsync(b, default);
+        Assert.Equal(ConversationIdentityDecision.PendingSwitch, pending.Identity.Decision);
+        Assert.NotNull(pending.Identity.TitleVisualDistance);
+        Assert.All(observer.State.Messages, m => Assert.Equal("chat A", m.RawText));
+        Assert.Equal(2, (await observer.ObserveAsync(b, default)).Identity.PendingObservations);
+        var switched = await observer.ObserveAsync(b, default);
+        Assert.Equal(2, switched.Epoch.Id);
+        Assert.All(switched.MessagesObserved, m => Assert.Equal(MessageObservationKind.Bootstrap, m.Origin));
+        Assert.All(observer.State.Messages, m => Assert.Equal("chat B", m.RawText));
+        await observer.ObserveAsync(b, default);
+        await observer.ObserveAsync(a, default);
+        await observer.ObserveAsync(a, default);
+        var back = await observer.ObserveAsync(a, default);
+        Assert.Equal(3, back.Epoch.Id);
+        Assert.Empty(back.NewMessages);
+        Assert.All(observer.State.Messages, m => Assert.Equal("chat A", m.RawText));
+    }
+
+    [Fact]
+    public void Tight_title_normalization_survives_DPI_scaling_and_header_width_change()
+    {
+        var provider = new VisualConversationIdentityProvider();
+        var a = Frame(1000, 600, 25, []);
+        a = CloneWithFill(a, new CapturePixelRect(30, 22, 4, 18), 220);
+        a = CloneWithFill(a, new CapturePixelRect(30, 22, 20, 3), 220);
+        var b = Frame(1200, 900, 25, []);
+        b = CloneWithFill(b, new CapturePixelRect(45, 33, 6, 27), 210);
+        b = CloneWithFill(b, new CapturePixelRect(45, 33, 30, 5), 210);
+        var comparison = provider.Compare(provider.GetVisualEvidence(a, new CapturePixelRect(0, 60, 1000, 540)),
+            provider.GetVisualEvidence(b, new CapturePixelRect(0, 90, 1200, 810)));
+        Assert.True(comparison.IsMatch);
+        Assert.NotNull(comparison.TitleVisualDistance);
+    }
+
+    [Fact]
+    public async Task Changed_title_with_two_common_bubble_shapes_never_bootstraps_cached_old_text()
+    {
+        var first = Bubble(12, 100, 80, MessageSide.Remote);
+        var second = Bubble(120, 150, 120, MessageSide.Self);
+        var a = Frame(1000, 600, 25, [(first.Bounds, (byte)80), (second.Bounds, (byte)120)]);
+        a = CloneWithFill(a, new CapturePixelRect(30, 22, 4, 18), 220);
+        a = CloneWithFill(a, new CapturePixelRect(30, 22, 20, 3), 220);
+        var b = Frame(1000, 600, 25, [(first.Bounds, (byte)80), (second.Bounds, (byte)120)]);
+        b = CloneWithFill(b, new CapturePixelRect(30, 22, 4, 18), 220);
+        b = CloneWithFill(b, new CapturePixelRect(30, 37, 20, 3), 220);
+        var ocr = new StubOcrEngine(Ocr("A1"), Ocr("A2"), Ocr("B1"), Ocr("B2"));
+        var observer = CreateObserver(new StubBubbleDetector([first, second]), ocr);
+        await observer.ObserveAsync(a, default);
+        Assert.Equal(ConversationIdentityDecision.PendingSwitch, (await observer.ObserveAsync(b, default)).Identity.Decision);
+        Assert.All(observer.State.Messages, m => Assert.StartsWith("A", m.RawText));
+        await observer.ObserveAsync(b, default);
+        var confirmed = await observer.ObserveAsync(b, default);
+        Assert.Equal(2, confirmed.Epoch.Id);
+        Assert.Equal(new[] { "B1", "B2" }, observer.State.Messages.Select(m => m.RawText));
+        Assert.Equal(4, ocr.Calls);
+        Assert.Empty(confirmed.NewMessages);
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(8)]
+    public void One_changed_glyph_in_short_or_long_title_is_not_diluted_by_common_ink(int glyphs)
+    {
+        var a = Frame(1000, 600, 25, []);
+        var b = Frame(1000, 600, 25, []);
+        for (var i = 0; i < glyphs; i++)
+        {
+            var x = 30 + i * 26;
+            a = CloneWithFill(a, new CapturePixelRect(x, 22, 4, 18), 220);
+            b = CloneWithFill(b, new CapturePixelRect(x, 22, 4, 18), 220);
+            a = CloneWithFill(a, new CapturePixelRect(x, 22, 20, 3), 220);
+            b = CloneWithFill(b, new CapturePixelRect(x, i == glyphs / 2 ? 37 : 22, 20, 3), 220);
+        }
+        var roi = new CapturePixelRect(0, 60, 1000, 540);
+        var provider = new VisualConversationIdentityProvider();
+        Assert.False(provider.Compare(provider.GetVisualEvidence(a, roi), provider.GetVisualEvidence(b, roi)).IsMatch);
+    }
+
+    [Fact]
+    public void Separate_titlebar_and_right_control_ink_do_not_expand_the_title_crop()
+    {
+        var a = Frame(400, 600, 25, []);
+        a = CloneWithFill(a, new CapturePixelRect(30, 32, 4, 18), 220);
+        a = CloneWithFill(a, new CapturePixelRect(30, 32, 20, 3), 220);
+        var b = CloneWithFill(a, new CapturePixelRect(220, 15, 10, 3), 220);
+        b = CloneWithFill(b, new CapturePixelRect(210, 32, 8, 18), 220);
+        var roi = new CapturePixelRect(0, 60, 400, 540);
+        var provider = new VisualConversationIdentityProvider();
+        Assert.Equal(provider.LocateTitleRegion(a, roi), provider.LocateTitleRegion(b, roi));
+        Assert.True(provider.Compare(provider.GetVisualEvidence(a, roi), provider.GetVisualEvidence(b, roi)).IsMatch);
+    }
+
+    [Fact]
+    public async Task Unanchored_partial_geometry_cannot_steal_another_messages_cached_text()
+    {
+        var old = new DetectedBubble(new CapturePixelRect(12, 50, 90, 30), MessageSide.Remote, .94);
+        var partial = old with { Bounds = new CapturePixelRect(12, 20, 90, 60) };
+        var complete = old with { Bounds = new CapturePixelRect(12, 30, 90, 50) };
+        var ocr = new StubOcrEngine(Ocr("old A"), Ocr("newly discovered B"));
+        var observer = CreateObserver(new StubBubbleDetector([old], [partial], [complete]), ocr);
+        var original = await observer.ObserveAsync(Frame(10, [(old.Bounds, (byte)80)]), default);
+        await observer.ObserveAsync(Frame(10, [(partial.Bounds, (byte)120)]), default);
+        Assert.Equal(1, ocr.Calls);
+        // The complete near-top control must contain actual closed caps, not a flat
+        // rectangle indistinguishable from a clipped crop. Keep frame/layout unchanged.
+        var completeFrame = Frame(10, [(complete.Bounds, (byte)120)]);
+        for (var row = 0; row < 3; row++)
+        {
+            var inset = 3 - row;
+            completeFrame = CloneWithFill(completeFrame, new(complete.Bounds.X, complete.Bounds.Y + row, inset, 1), 0);
+            completeFrame = CloneWithFill(completeFrame, new(complete.Bounds.Right - inset, complete.Bounds.Y + row, inset, 1), 0);
+            completeFrame = CloneWithFill(completeFrame, new(complete.Bounds.X, complete.Bounds.Bottom - 1 - row, inset, 1), 0);
+            completeFrame = CloneWithFill(completeFrame, new(complete.Bounds.Right - inset, complete.Bounds.Bottom - 1 - row, inset, 1), 0);
+        }
+        var result = await observer.ObserveAsync(completeFrame, default);
+        var visibleId = Assert.Single(observer.State.VisibleMessages).LogicalMessageId;
+        Assert.NotEqual(original.MessagesObserved[0].Id, visibleId);
+        Assert.Equal("newly discovered B", observer.State.Messages.Single(m => m.Id == visibleId).RawText);
+        Assert.Empty(result.NewMessages);
+        Assert.Equal(2, ocr.Calls);
+    }
+
+    [Fact]
+    public async Task Verified_full_rerender_refreshes_cache_for_later_partial_full_cycles()
+    {
+        var full = new DetectedBubble(new CapturePixelRect(12, 40, 90, 60), MessageSide.Remote, .94);
+        var partial = full with { Bounds = new CapturePixelRect(12, 20, 90, 30) };
+        var anchor = Bubble(120, 150, 140, MessageSide.Self);
+        var movedAnchor = anchor with { Bounds = anchor.Bounds with { Y = 100 } };
+        var ocr = new StubOcrEngine(Ocr("text"), Ocr("anchor"), Ocr("text"));
+        var observer = CreateObserver(new StubBubbleDetector([full, anchor], [partial, movedAnchor],
+            [full, anchor], [partial, movedAnchor], [full, anchor]), ocr);
+        var oldFrame = Frame(10, [(full.Bounds, (byte)80), (anchor.Bounds, (byte)140)]);
+        var partialFrame = Frame(10, [(partial.Bounds, (byte)96), (movedAnchor.Bounds, (byte)140)]);
+        var newFrame = Frame(10, [(full.Bounds, (byte)96), (anchor.Bounds, (byte)140)]);
+        var original = await observer.ObserveAsync(oldFrame, default);
+        await observer.ObserveAsync(partialFrame, default);
+        await observer.ObserveAsync(newFrame, default);
+        Assert.Equal(3, ocr.Calls);
+        await observer.ObserveAsync(partialFrame, default);
+        await observer.ObserveAsync(newFrame, default);
+        Assert.Equal(3, ocr.Calls);
+        Assert.Equal(original.MessagesObserved[0].Id, observer.State.VisibleMessages[0].LogicalMessageId);
+    }
+
+    [Fact]
+    public async Task Stable_frame_produces_zero_additional_paddle_requests()
+    {
+        var frame = Frame(headerValue: 10, bubbleValue: 80);
+        var detector = new StubBubbleDetector(
+            [new DetectedBubble(new CapturePixelRect(12, 60, 50, 24), MessageSide.Remote, 0.94)]);
+        var paddle = new StubOcrEngine(new OcrResult("好", null, OcrTextStatus.LowConfidence, "好"));
+        var adaptive = new StubOcrEngine(new OcrResult("好", 0.96, OcrTextStatus.Recognized, "好"));
+        var routed = new UnifiedPaddleOcrEngine(paddle, adaptive);
+        var observer = CreateObserver(detector, routed);
+
+        await observer.ObserveAsync(frame, CancellationToken.None);
+        var paddleCallsAfterBaseline = paddle.Calls;
+        await observer.ObserveAsync(frame, CancellationToken.None);
+
+        Assert.Equal(1, paddleCallsAfterBaseline);
+        Assert.Equal(paddleCallsAfterBaseline, paddle.Calls);
+        Assert.Equal(0, adaptive.Calls);
     }
 
     [Fact]
@@ -374,7 +1024,7 @@ public sealed class MessageObserverTests
         var liveMessage = Bubble(12, 140, 180, MessageSide.Remote);
         var detector = new StubBubbleDetector(
             [chatA], [], [], [], [firstHistory], [firstHistory, secondHistory], [firstHistory, secondHistory],
-            [secondHistory, liveMessage]);
+            [firstHistory, secondHistory, liveMessage]);
         var ocr = new StubOcrEngine(Ocr("chat-a"), Ocr("history-1"), Ocr("history-2"), Ocr("live"));
         var identity = new StubConversationIdentityProvider(
             Identity(1), Identity(2), Identity(2), Identity(2),
@@ -400,6 +1050,7 @@ public sealed class MessageObserverTests
             Frame(
                 30,
                 [
+                    (firstHistory.Bounds, (byte)110),
                     (secondHistory.Bounds, (byte)140),
                     (liveMessage.Bounds, (byte)180),
                 ]),
@@ -1409,12 +2060,14 @@ public sealed class MessageObserverTests
         var first = Bubble(12, 45, 120, MessageSide.Remote);
         var second = Bubble(12, 85, 120, MessageSide.Remote);
         var third = Bubble(12, 125, 120, MessageSide.Remote);
-        var detector = new StubBubbleDetector([first, second], [first, second, third]);
+        var beforeFirst = first with { Bounds = first.Bounds with { Y = 65 } };
+        var beforeSecond = second with { Bounds = second.Bounds with { Y = 105 } };
+        var detector = new StubBubbleDetector([beforeFirst, beforeSecond], [first, second, third]);
         var ocr = new StubOcrEngine(Ocr("好"), Ocr("好"), Ocr("好"));
         var observer = CreateObserver(detector, ocr);
 
         await observer.ObserveAsync(
-            Frame(10, [(first.Bounds, (byte)120), (second.Bounds, (byte)120)]),
+            Frame(10, [(beforeFirst.Bounds, (byte)120), (beforeSecond.Bounds, (byte)120)]),
             CancellationToken.None);
         var ambiguousScroll = await observer.ObserveAsync(
             Frame(10, [(first.Bounds, (byte)120), (second.Bounds, (byte)120), (third.Bounds, (byte)120)]),
@@ -1573,9 +2226,11 @@ public sealed class MessageObserverTests
         public string Name => "stub";
 
         public int Calls { get; private set; }
+        public ImageCrop? LastCrop { get; private set; }
 
         public Task<OcrResult> RecognizeAsync(ImageCrop crop, CancellationToken cancellationToken)
         {
+            LastCrop = crop;
             var index = Math.Min(Calls, results.Length - 1);
             Calls++;
             return Task.FromResult(results[index]);
