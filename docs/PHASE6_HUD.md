@@ -109,9 +109,15 @@ Before processing real frames with HUD enabled, the runtime runs an in-memory au
 The probe reports whether desktop exclusion works, but **all VisibleDesktopFallback
 frames are discarded in HUD mode**, even after an apparently passing desktop probe.
 There is no screenshot-cleaning heuristic. If RenderWindow/audit is unavailable the
-HUD remains hidden and those frames never enter perception. Restart explicitly to
-retry a failed audit. The normal diagnostics command remains available without HUD.
-Render-HWND, monitor and DPI transitions require a fresh probe. The brief colored patch is diagnostic,
+HUD remains hidden and those frames never enter perception. Two consecutive equivalent
+tracker snapshots (HWND, render HWND, capture bounds, monitor and both DPI axes) are
+required before auditing. A fresh snapshot after the probe must still match. Movement,
+DPI changes and foreground loss are retryable, not permanent failures. Stable safety
+failures latch only until configuration changes, avoiding a 200 ms retry loop.
+ForegroundPreserved measures only foreground HWND preservation; configuration stability
+is separate evidence. Presenter stale-geometry hiding never changes audit state.
+The normal diagnostics command remains available without HUD.
+Render-HWND, bounds, monitor and DPI transitions require a fresh probe. The brief colored patch is diagnostic,
 not a semantic HUD or acceptance of text extraction.
 
 ## Commands (Windows PowerShell)
@@ -170,6 +176,14 @@ and must not be represented as real message/Jev acceptance.
   path, not the real HUD/Remote acceptance. No screenshot or raw text was exported.
 
 ### Required manual sequence (not yet passed)
+
+Initial Demo review confirmed card visibility, window-move following, Alt-Tab and
+minimize hiding/restoration, and uninterrupted typing focus. Initial monitor transition
+exposed conflated foreground/configuration evidence and a global failed-audit latch.
+The scoped state-machine correction has 6 additional deterministic cases (30 Overlay
+tests total). Actual 150% → 100% → 150% retest remains pending; no real Jev HUD test yet.
+Correction validation: Windows format/full build passed, zero warnings/errors;
+full .NET suite 322 passed, zero failed/skipped. Frozen perception/TypeSafe code unchanged.
 
 1. Demo/audit with real foreground WeChat at 150%: confirm card style, unobstructed
    message/composer, typing focus and click-through. Audit must report positive control

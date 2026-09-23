@@ -56,7 +56,7 @@ public sealed class WpfOverlayPresenter : IOverlayPresenter, IDisposable
     {
         if (_disposed || _probe) return;
         var scene = Volatile.Read(ref _latest);
-        if (scene.Window is not { } w || scene.Cards.IsEmpty || !OverlayNative.IsCurrentForeground(w))
+        if (scene.Window is not { } w || scene.Cards.IsEmpty || !OverlayNative.IsWeChatForeground(w) || !OverlayNative.SnapshotMatchesCurrentWindow(w))
         {
             _window.Hide(); _rendered = null;
             // A later foreground restore must wait for a fresh observed scene, never reuse a pre-hide scene.

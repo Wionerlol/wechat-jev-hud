@@ -25,7 +25,8 @@ public static class OverlayNative
         ? new(r.Left, r.Top, r.Right - r.Left, r.Bottom - r.Top) : default;
     public static void Configure(nint hwnd) => SetWindowLongPtr(hwnd, -20, (nint)((long)GetWindowLongPtr(hwnd, -20) | RequiredStyles));
     public static bool Position(nint hwnd, DesktopPixelRect b) => SetWindowPos(hwnd, new nint(-1), b.X, b.Y, b.Width, b.Height, 0x10 | 0x40);
-    public static bool IsCurrentForeground(WeChatWindowSnapshot w) => w.IsVisible && !w.IsMinimized &&
-        IsWindowVisible(w.Handle) && !IsIconic(w.Handle) && GetForegroundWindow() == w.Handle &&
+    public static bool IsWeChatForeground(WeChatWindowSnapshot w) =>
+        IsWindowVisible(w.Handle) && !IsIconic(w.Handle) && GetForegroundWindow() == w.Handle;
+    public static bool SnapshotMatchesCurrentWindow(WeChatWindowSnapshot w) =>
         Bounds(w.RenderHandle ?? w.Handle) == (w.RenderBounds ?? w.TopLevelBounds) && GetDpiForWindow(w.Handle) == w.Dpi.X;
 }

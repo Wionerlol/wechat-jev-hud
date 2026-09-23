@@ -36,8 +36,13 @@ public sealed class HudRuntimeCoordinator(WpfOverlayPresenter presenter, string[
         await using var jev = upload ? new JevAnalysisCoordinator(new ConversationJudgmentService(
             new TypeSafeHttpClient(http, Environment.GetEnvironmentVariable("TYPESAFE_API_KEY")))) : null;
         PerceptionRuntime? perception = null;
-        (nint Handle, nint? RenderHandle, uint Dpi, string Monitor)? verified = null;
-        bool auditFailed = false;
+        var audit = new CaptureAuditState();
+        string? auditDiagnostic = null;
+        void AuditStatus(CaptureConfiguration? configuration, string reason)
+        {
+            var line = $"hud_audit_state={audit.Phase} monitor={configuration?.Monitor} dpi={configuration?.DpiX} generation={audit.Generation} reason={reason}";
+            if (line != auditDiagnostic) { Console.WriteLine(line); auditDiagnostic = line; }
+        }
         long epoch = 0;
         string? lastFingerprint = null;
         var change = new ChatRoiChangeDetector();
@@ -71,19 +76,34 @@ public sealed class HudRuntimeCoordinator(WpfOverlayPresenter presenter, string[
                 var w = tracker.Locate();
                 if (w is null || !w.IsVisible || w.IsMinimized || !w.IsForeground)
                 {
+                    audit.Observe(w is null ? null : CaptureConfiguration.From(w), false);
+                    AuditStatus(w is null ? null : CaptureConfiguration.From(w), "not_foreground_or_unavailable");
                     presenter.Present(OverlayScene.Hidden);
                     status("HUD hidden: WeChat unavailable / minimized / not foreground.");
                     await Task.Delay(200, ct); continue;
                 }
-                if (verified != (w.Handle, w.RenderHandle, w.Dpi.X, w.Monitor.DeviceName))
+                var configuration = CaptureConfiguration.From(w);
+                var shouldAudit = audit.Observe(configuration, true);
+                if (!audit.CanProcess(configuration, CaptureMethod.RenderWindow))
                 {
                     presenter.Present(OverlayScene.Hidden);
-                    if (auditFailed) { status("Capture exclusion audit failed; HUD disabled. Restart to explicitly retry."); await Task.Delay(500, ct); continue; }
+                    AuditStatus(configuration, "configuration_gate");
+                    if (!shouldAudit)
+                    {
+                        status($"Capture safety: {audit.Phase} · DPI={w.Dpi.X}");
+                        await Task.Delay(200, ct); continue;
+                    }
                     status("Checking capture exclusion (temporary colored test patch; no images saved)…");
-                    var evidence = await OverlayCaptureAudit.RunAsync(presenter, w, capture);
+                    CaptureExclusionEvidence evidence;
+                    try { evidence = await OverlayCaptureAudit.RunAsync(presenter, w, capture); }
+                    catch (Exception) { evidence = new(false, false, false, true, false, false, false); }
+                    var fresh = tracker.Locate();
+                    var outcome = audit.Complete(configuration, fresh is null ? null : CaptureConfiguration.From(fresh),
+                        fresh is not null && OverlayNative.IsWeChatForeground(fresh), evidence);
                     Console.WriteLine("hud_capture_audit=" + JsonSerializer.Serialize(evidence));
-                    if (!evidence.SafeRender) { auditFailed = true; continue; }
-                    verified = (w.Handle, w.RenderHandle, w.Dpi.X, w.Monitor.DeviceName);
+                    AuditStatus(configuration, outcome.ToString());
+                    if (outcome != CaptureAuditOutcome.Passed) { await Task.Delay(200, ct); continue; }
+                    w = fresh!;
                     if (auditOnly) { status("Capture audit passed for current monitor. Close to stop, or move across DPI to audit again."); }
                 }
                 if (auditOnly) { await Task.Delay(200, ct); continue; }
@@ -91,7 +111,7 @@ public sealed class HudRuntimeCoordinator(WpfOverlayPresenter presenter, string[
                 {
                     var frame = capture.Capture(w);
                     // Unverified BitBlt is NEVER processed, even when affinity was accepted.
-                    if (!OverlayCapturePolicy.CanProcess(frame.Method, verified == (w.Handle, w.RenderHandle, w.Dpi.X, w.Monitor.DeviceName)))
+                    if (!audit.CanProcess(CaptureConfiguration.From(w), frame.Method) || !OverlayNative.SnapshotMatchesCurrentWindow(w))
                     { presenter.Present(OverlayScene.Hidden); status("Desktop fallback: frame discarded, HUD hidden (fail closed)."); await Task.Delay(200, ct); continue; }
                     var roi = locator.Locate(frame).Bounds;
                     if (demo)

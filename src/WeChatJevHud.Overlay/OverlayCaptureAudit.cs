@@ -4,9 +4,10 @@ using WeChatJevHud.Core.Windows;
 namespace WeChatJevHud.Overlay;
 
 public sealed record CaptureExclusionEvidence(bool VisiblePositiveControl, bool RenderExcluded, bool DesktopExcluded,
-    bool ForegroundPreserved, bool StylesCorrect, bool PhysicalBoundsCorrect, bool AffinityConfigured)
+    bool ForegroundPreserved, bool StylesCorrect, bool PhysicalBoundsCorrect, bool AffinityConfigured,
+    bool ConfigurationStable = true)
 {
-    public bool SafeRender => VisiblePositiveControl && RenderExcluded && ForegroundPreserved && StylesCorrect && PhysicalBoundsCorrect;
+    public bool SafeRender => VisiblePositiveControl && RenderExcluded && ForegroundPreserved && StylesCorrect && PhysicalBoundsCorrect && ConfigurationStable;
 }
 
 public static class OverlayCaptureAudit
@@ -14,7 +15,8 @@ public static class OverlayCaptureAudit
     public static async Task<CaptureExclusionEvidence> RunAsync(WpfOverlayPresenter presenter, WeChatWindowSnapshot w, IWindowCapture capture)
     {
         var before = OverlayNative.GetForegroundWindow();
-        if (!OverlayNative.IsCurrentForeground(w)) return new(false, false, false, false, false, false, false);
+        if (!OverlayNative.IsWeChatForeground(w)) return new(false, false, false, false, false, false, false);
+        if (!OverlayNative.SnapshotMatchesCurrentWindow(w)) return new(false, false, false, true, false, false, false, false);
         try
         {
             // Prove the marker really renders, rather than claiming exclusion from an invisible host.
@@ -24,10 +26,11 @@ public static class OverlayCaptureAudit
             var render = capture.Capture(w);
             var desktop = capture.Capture(w with { RenderHandle = null });
             return new(positive, render.Method == CaptureMethod.RenderWindow && !HasMarker(render), !HasMarker(desktop),
-                OverlayNative.GetForegroundWindow() == before && OverlayNative.IsCurrentForeground(w),
+                before == w.Handle && OverlayNative.GetForegroundWindow() == w.Handle,
                 ((long)OverlayNative.GetWindowLongPtr(presenter.Handle, -20) & OverlayNative.RequiredStyles) == OverlayNative.RequiredStyles,
                 OverlayNative.Bounds(presenter.Handle) == w.CaptureBounds,
-                OverlayNative.GetWindowDisplayAffinity(presenter.Handle, out var affinity) && affinity == 0x11);
+                OverlayNative.GetWindowDisplayAffinity(presenter.Handle, out var affinity) && affinity == 0x11,
+                OverlayNative.SnapshotMatchesCurrentWindow(w));
         }
         finally { await presenter.ProbeAsync(w, false, true); }
     }

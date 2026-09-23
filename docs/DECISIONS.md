@@ -958,3 +958,10 @@ heuristics or saved frames. WDA_EXCLUDEFROMCAPTURE is defense-in-depth, not proo
 Only production object construction was extracted to Runtime for App/Diagnostics;
 Observer, OCR, detector, trust, identity and TypeSafe implementations are unchanged.
 Phase 6 manual gates remain open; no PASS based on deterministic tests or Demo alone.
+
+Cross-monitor audit correction: foreground preservation means HWND equality only,
+not unchanged geometry/DPI. Audit authorization is keyed by HWND/render HWND,
+capture bounds, monitor and DPI, requires two equivalent observations and fresh
+post-audit validation. Transient configuration/foreground changes hide and retry
+after stability; stable safety failures suppress retries on that configuration only.
+Pixel exclusion remains authoritative and desktop fallback remains forbidden.
