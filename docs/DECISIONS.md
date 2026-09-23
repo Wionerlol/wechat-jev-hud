@@ -726,3 +726,29 @@ and reason. Partials retain existing no-OCR/no-NEW/no-semantic-ready policy and 
 overwrite complete text. Surviving-edge association uses the nearer boundary even
 when clipping leaves a small apparent gap. D-025 append detection, identity, Unified
 extraction and trust are unchanged. No Phase 4.5 PASS is claimed.
+
+The subsequent real paired fixture disproved completeness for a 496×26 bottom
+fragment 2px from the ROI boundary at 144 DPI (wrongly Complete); its full 496×111
+version was captured 13px from the boundary. The user explicitly deferred this blocker
+while authorizing D-027. D-026 is not manually accepted and must be repaired later.
+
+## D-027 — Evaluate trust separately; same-model stability is not correctness
+
+Phase 4.5B is isolated Python evaluation, not a production trust change. Reuse the
+unchanged Unified extraction function and compare raw repeat, single-line detector-crop
+diagnostic and high-quality resize diagnostic. Expected labels only evaluate outcomes;
+they never participate in candidate decisions. No Adaptive normal agreement, raw-score
+threshold, production preprocessing or Observer changes.
+
+Hard safety requirements precede any candidate: fully visible, complete non-empty
+text, normally completed extraction, no runtime fallback, supported structure/Unicode,
+and verified semantic-region separation. Offline manually inspected region evidence
+does not grant production main crops verified quote separation automatically.
+
+The strict stability proposal improves coverage but still trusts two distinct stable
+substantive errors across all tested representations. Reject it as sufficient positive
+trust. Keep it only as exploratory negative evidence of disagreement; do not blacklist
+failing words, whitelist sides, or call repeated model agreement independent confidence.
+Non-exact raw output, normalized equality, semantic equivalence, dangerous error and
+polarity error are separate fields; non-exact semantic labels stay unknown until review.
+Full results and limitations: `docs/PHASE45B_TRUST_CALIBRATION.md`.

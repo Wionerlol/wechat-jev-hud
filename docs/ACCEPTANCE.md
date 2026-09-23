@@ -384,8 +384,9 @@ Final manual acceptance evidence (2026-09-21):
 
 ## Phase 4.5 — Production OCR runtime
 
-**Status: IN PROGRESS — Unified production extraction implemented and production
-corpus parity verified; real observer matrix and separate trust calibration pending.**
+**Status: IN PROGRESS — Unified extraction accepted separately; Phase 4.5B trust
+calibration is experimental. The confirmed partial-completeness defect remains a
+deferred blocker. No overall PASS.**
 
 ### Observer regression gate (2026-09-22, D-024)
 
@@ -481,9 +482,12 @@ Phase 4 observation behavior. Trust calibration remains separate.
 - Private old captures provide real 36/54px single-line and 111px multiline pixels:
   simulated bottom boundaries accept the full shapes and reject 15px fragments.
   These are simulated boundary probes, NOT the requested real scroll capture pair.
-- Still required: capture the same real multiline message clipped and full (including
-  actual DPI/ROI/evidence), then repeat anchored appends, top/bottom scrolling/full
-  recovery and A→B→A. Phase 4.5 remains IN PROGRESS. OCR/trust is unchanged.
+- Real paired fixture now captured at 144 DPI: partial 496×26, bottom gap 2px,
+  incorrectly Complete; full 496×111, bottom gap 13px, correctly Complete. Private
+  `.ocr-cache/completeness/{partial,full}-attempt-2.*` preserves the evidence.
+  Rounded-cap evidence still has a false positive. The user deferred this fix during
+  Phase 4.5B; do not change completeness or erase this blocker. Subsequent fix and
+  real scroll/full-recovery regression remain required before overall PASS.
 - Final automated gates for this fix: Windows `dotnet format` passed; full Windows
   build passed with zero warnings/errors; 223 .NET tests passed (157 Observer,
   53 OCR, 6 Vision, 5 Windows, 2 Capture), zero failures/skips. Python/model tests
@@ -679,6 +683,28 @@ Stop for review; Phase
 4.5 is not PASS and Phase 5 must not begin.
 
 ---
+
+## Phase 4.5B — OCR trust calibration
+
+**Status: IN PROGRESS — three isolated candidate policies evaluated; none accepted.**
+
+See [PHASE45B_TRUST_CALIBRATION.md](PHASE45B_TRUST_CALIBRATION.md) for rules, runtime,
+counts, cohorts, gaps and private review procedure. No production behavior changed.
+
+- Same immutable 84 entries / 76 distinct manually reviewed full crops; known partial
+  pair excluded. Production-function outputs retain 84/84 benchmark parity (79 exact).
+- Same-model repeat, detector-line diagnostic and 1.5× Lanczos diagnostic are correlated
+  stability evidence, not independent agreement. No Adaptive or rec_score threshold.
+- Strict candidate: 72 trusted-exact, 3 trusted-wrong, 7 untrusted-exact, 2 untrusted-wrong;
+  coverage 75/84; false trust 3/75. Two distinct wrong crops survive every probe.
+- The 52-crop subset alone gives 47 trusted-exact and no trusted-wrong, but broader
+  Remote fixtures invalidate a general safety claim. Do not tune to the smaller set.
+- Non-exact semantic-equivalence/danger/polarity labels require human review; unknown
+  is not safe. No accepted zero-dangerous-error result is claimed.
+- Missing six short/polarity concepts, broader Remote and dual-DPI multiline samples
+  require real capture. Existing side labels are inferred; missing DPI stays unknown.
+- Private review HTML/JSON/Markdown are in `.ocr-cache/phase4.5b-trust/`.
+- Overall Phase 4.5 remains blocked by completeness and unaccepted trust calibration.
 
 ## Phase 5 — Jev integration
 

@@ -3,6 +3,11 @@
 This checkout implements accepted Phases 0–4 and an in-progress Phase 4.5 production
 OCR runtime. It does not implement Phase 5 Jev calls or the HUD overlay.
 
+Phase 4.5B [trust calibration](docs/PHASE45B_TRUST_CALIBRATION.md) is experimental:
+same-model stability improved proposed coverage but still trusted substantive errors.
+No production trust change. The real 496×26 partial-bubble misclassification remains
+a deferred blocker; overall Phase 4.5 is not PASS.
+
 ## What is available
 
 Current Phase 4.5 extraction: Unified Paddle, production parity **79/84**, no Adaptive
@@ -18,7 +23,8 @@ NEW detection now uses a separate live-edge append detector before history match
 (D-025); inspect `live_edge_append` decisions. Ambiguous moving all-equal views remain
 suppressed. D-025's anchored repeated appends, scrolling and A→B→A are manually
 accepted. The bottom-clipped-history fix (D-026) uses scale/rounded-cap evidence and
-still needs the private clipped/full capture pair and real scroll regression.
+has a confirmed failing private clipped/full pair and still needs a later fix and
+real scroll regression; it is frozen during trust calibration.
 Extraction/trust calibration is unchanged. In `observe.ps1` diagnostics, inspect
 `occurrence`, `title_visual_distance`, and `bubble_visibility` records. Repeat Self
 and Remote equal-message appends, scroll away/back, A→B→A and clipped multiline history.

@@ -601,6 +601,16 @@ when it yields two or more. D-022's candidate is now implemented under D-023.
 The old custom router and normal Adaptive fusion are removed from observer wiring;
 trust calibration remains deferred.
 
+Phase 4.5B now evaluates trust in isolated Python tooling only (D-027); production
+still follows the conservative behavior above. Evaluation requires separately recorded
+manual full-crop/region provenance and excludes known partials, rather than relying on
+the currently defective completeness classifier. Proposed trust decisions cannot
+override visibility, completeness, empty/error/fallback or quote-separation gates.
+Raw exactness, normalized equality, semantic equivalence and dangerous/polarity errors
+remain separate; unknown semantic labels are not counted as confirmed safe outcomes.
+Same-model and cross-representation stability are correlated evidence, not confidence.
+The tested stability proposals still trust substantive errors and are not accepted.
+
 ---
 
 ## 11. Conversation state
