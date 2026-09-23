@@ -7,6 +7,28 @@ namespace WeChatJevHud.Observer.Tests;
 public sealed class LiveEdgeAppendDetectorTests
 {
     [Fact]
+    public void Real_translated_append_allows_undetected_top_clipped_prefix()
+    {
+        // Actual geometry/visibility from v0-append-predicate-20260924-run2.
+        // Private hashes renamed bijectively: all seven retained crop hashes match exactly.
+        LiveEdgeBubble B(int x, int y, int w, int h, string hash) =>
+            new(MessageSide.Self, new(x, y, w, h), hash, true);
+        LiveEdgeBubble[] before = [B(548, 135, 463, 83, "multiline"), B(803, 309, 208, 54, "a"),
+            B(947, 393, 64, 54, "repeat"), B(947, 477, 64, 54, "repeat"), B(803, 623, 208, 54, "b"),
+            B(947, 707, 64, 54, "repeat"), B(947, 791, 64, 54, "repeat"), B(765, 936, 246, 54, "c")];
+        var after = before.Skip(1).Select(b => b with { Bounds = b.Bounds with { Y = b.Bounds.Y - 84 } })
+            .Append(B(765, 936, 246, 54, "new")).ToArray();
+        var result = _detector.Detect(before, after, new(377, 120, 741, 891), true, true, 1);
+        Assert.Equal("anchored_translated_suffix", result.Reason);
+        Assert.Equal(1, result.PreviousStart);
+        Assert.Equal(7, result.SuffixStart);
+        Assert.Equal(-84, result.DeltaY);
+        // Omitting a fully interior prefix is not the same case (history discovery).
+        before[0] = before[0] with { Bounds = before[0].Bounds with { Y = 210 } };
+        Assert.False(_detector.Detect(before, after, new(377, 120, 741, 891), true, true, 1).IsAppend);
+    }
+
+    [Fact]
     public void Logged_smoke3_geometry_rejects_clipped_prefix_even_assuming_retained_hashes_match()
     {
         // Bounds/visibility from the real pre-anchor and first-anchor log frames.

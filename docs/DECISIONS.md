@@ -793,6 +793,13 @@ continues. At 144 DPI, the known 496x26 / 2px-gap fragment is excluded; the full
 V0 exclusion, not a fix or universal proof for the rounded-cap completeness classifier.
 Existing diagnostics may remain. D-025 append and identity algorithms remain frozen.
 
+Narrow observed append exception: a real translated append preserved seven exact
+ordered crop identities but the detector omitted the 14px remainder of a top-clipped
+83px bubble. Permit one missing clipped prefix only if it crosses the viewport top
+and its translated bottom precedes the first retained bubble. Fully interior omissions
+remain rejected; all existing exact identity, unique-anchor, translation and live-edge
+requirements remain. This is not a general tolerance/scroll-inference redesign.
+
 Smoke regression clarification: structural visibility comes exclusively from
 `BubbleCompletenessAnalyzer`. Semantic edge exclusion must never be folded into
 `IsFullyVisible`, live-tail continuity, or `_atLiveEdge`. Doing so caused genuine

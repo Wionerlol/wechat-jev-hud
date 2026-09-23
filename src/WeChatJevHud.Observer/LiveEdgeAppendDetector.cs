@@ -92,7 +92,16 @@ public sealed class LiveEdgeAppendDetector
             if (!uniqueAnchor) { Reject(start, "no_unique_anchor"); continue; }
             if (delta >= -tolerance) { Reject(start, "delta_not_upward"); continue; }
             var clippedPrefix = previous.Take(start).Where(b => b.Bounds.Bottom + delta > viewport.Y).ToArray();
-            if (clippedPrefix.Length != currentStart) { Reject(start, "clipped_prefix_count_mismatch"); continue; }
+            // A connected component clipped by the viewport may disappear from detection
+            // entirely. The real trace has 14 visible pixels of an 83px multiline bubble.
+            // Permit only one absent TOP-clipped prefix, with its translated extent above
+            // the first retained bubble. Interior omissions and observed partial geometry
+            // still require the existing checks; hashes/order/unique anchors are unchanged.
+            var omittedTopFragment = currentStart == 0 && clippedPrefix.Length == 1 &&
+                clippedPrefix[0].Bounds.Y + delta < viewport.Y &&
+                clippedPrefix[0].Bounds.Bottom + delta <= current[0].Bounds.Y;
+            if (clippedPrefix.Length != currentStart && !omittedTopFragment)
+            { Reject(start, "clipped_prefix_count_mismatch"); continue; }
             if (!Enumerable.Range(0, currentStart).All(i =>
                     clippedPrefix[i].Bounds.Y + delta <= viewport.Y + boundaryMargin &&
                     clippedPrefix[i].Side == current[i].Side &&

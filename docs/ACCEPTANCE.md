@@ -432,6 +432,20 @@ This conditional geometry test is NOT a complete replay of the actual hash input
 No predicate/tolerance has been changed. Full-input diagnosis remains required before
 a narrow fix and the subsequent anchor-smoke-4 acceptance run.
 
+Fresh full-input trace `v0-append-predicate-20260924-run2` identifies a distinct exact
+failure: at-live-edge/stable both true; 8 previous/8 current bubbles; start=1;
+all seven retained hashes and dimensions identical, translation -84; the old top
+83px bubble would retain 14px but no component was detected, so currentStart=0
+versus clippedPrefix.Length=1 rejects with `clipped_prefix_count_mismatch`.
+The exact geometry/equality-pattern regression failed before the narrow fix and
+passed afterward (private hash values are bijectively renamed in the public test).
+One missing top-clipped prefix is now allowed only when its translated extent ends
+above the first retained bubble; no fully interior omission is allowed. No hash,
+width, matching, identity, OCR or trust tolerance changed. The earlier observed
+partial-width mismatch is NOT fixed by this change. Manual acceptance remains open.
+Narrow-fix validation: Windows format and build passed (zero warnings/errors);
+247 .NET tests passed, including 171 Observer tests. No OCR benchmark was run.
+
 ### Observer regression gate (2026-09-22, D-024)
 
 Phase 4.5 remains blocked on real-device observer acceptance. The user confirmed that
