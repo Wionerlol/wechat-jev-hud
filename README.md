@@ -1,31 +1,38 @@
 # WeChat × Jev Conversation HUD
 
-This checkout implements accepted Phases 0–4 and an in-progress Phase 4.5 production
+This checkout implements accepted Phases 0–4 and **Phase 4.5 PASS for V0** production
 OCR runtime. It does not implement Phase 5 Jev calls or the HUD overlay.
 
 Phase 4.5B research is frozen by D-028: 119/124 distinct reviewed crops were literally
 exact; all five non-exact outputs were human-labelled semantically equivalent. V0
 accepts residual OCR risk, not a guarantee of correctness. Production uses hard safety
-gates, a conservative region check and a 6 DIP viewport-edge exclusion. The final
-real-machine smoke test is still required; overall Phase 4.5 is not PASS.
+gates, a conservative region check and a 6 DIP viewport-edge exclusion. Final scroll
+and persistent-state safety acceptance passed on 2026-09-24 (D-031).
 
 ## What is available
 
 Current Phase 4.5 extraction: Unified Paddle, production parity **79/84**, no Adaptive
-fallbacks on the healthy corpus. Final V0 observer smoke acceptance is still
-pending; no further OCR calibration is planned. Historical worker evaluation uses
+fallbacks on the healthy corpus. V0 observer acceptance is complete with the explicit
+limitations below; no further OCR calibration is planned. Historical worker evaluation uses
 `scripts/evaluate-production-ocr.ps1`, then
 `python -m scripts.compare_production_unified --root .ocr-cache/phase4.5-paddle-bubble`
 to check the immutable benchmark parity. Reports remain private under `.ocr-cache`.
 
 Observer regression fixes include geometry-aware occurrence matching and title-ink
-identity evidence; visible-completeness acceptance remains open.
+identity evidence; V0 edge safety is accepted without claiming perfect completeness.
 NEW detection now uses a separate live-edge append detector before history matching
 (D-025); inspect `live_edge_append` decisions. Ambiguous moving all-equal views remain
 suppressed. D-025's anchored repeated appends, scrolling and A→B→A are manually
 accepted. The bottom-clipped-history fix (D-026) uses scale/rounded-cap evidence and
 has a confirmed failing private clipped/full pair. V0 mitigates it with a 6 DIP semantic
 edge exclusion rather than claiming the rounded-cap classifier is fixed.
+Unmatched incomplete History remains transient and never enters the persistent
+timeline. Historical visible association for ambiguous repeats is best-effort, not
+a semantic guarantee: the final audit found zero NEW, no epoch change, no incomplete
+History allocations and no protected-field/order mutations across 27 state snapshots.
+A top-clipped width change (463 -> 456px) may conservatively miss an append; strict
+width/hash matching is retained to avoid history replay. Fresh Remote sending was
+unavailable in the final smoke, not claimed as newly verified. See ACCEPTANCE.md.
 In `observe.ps1` diagnostics, inspect
 `occurrence`, `title_visual_distance`, and `bubble_visibility` records. Repeat Self
 and Remote equal-message appends, scroll away/back, A→B→A and clipped multiline history.

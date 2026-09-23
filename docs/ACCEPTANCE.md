@@ -384,9 +384,10 @@ Final manual acceptance evidence (2026-09-21):
 
 ## Phase 4.5 — Production OCR runtime
 
-**Status: IN PROGRESS — V0 architecture and residual OCR risk accepted (D-028).
-Further OCR research is stopped. Hard-gate/edge-guard integration and the final
-real-machine smoke workflow must pass before overall PASS or PR #5 readiness.**
+**Status: PASS for V0 — 2026-09-24 (D-028 through D-031).**
+Unified extraction, hard safety gates and bounded residual OCR risk are accepted.
+Final scroll/persistent-state safety passed on `cde5ebf`. Observer reconciliation is
+frozen; Phase 5/Jev has not begun. No further Phase 4.5 investigation is requested.
 
 V0 closeout requirements:
 
@@ -395,11 +396,36 @@ V0 closeout requirements:
 - [x] Deterministic 6 DIP edge-guard tests cover 96/144/192 DPI and the known 144-DPI
   496x26 / 2px-gap excluded versus 496x111 / 13px-gap allowed geometry.
 - [x] Full Windows format/build/.NET and Python regression gates completed for closeout.
-- [ ] Final real smoke: short Self, short Remote, negation, mixed, two-line, repeated
-  identical append, scroll away/back, A-B-A, known bottom fragment, minimize/restore.
-- [ ] Healthy-run fallback count zero; normal complete Paddle semantic-ready;
+- [x] Final V0 manual gate under the user's narrowed closeout: accepted real Self
+  appends and final scroll safety; retain earlier negation/mixed/two-line, A-B-A,
+  edge-fragment and minimize/restore evidence. Fresh Remote sending was unavailable
+  in the final smoke and is NOT claimed as newly tested.
+- [x] Healthy-run fallback count zero; normal complete Paddle semantic-ready;
   edge fragment untrusted and cannot overwrite complete text; no duplicate/replay/
   epoch isolation regression. Existing D-025 manual evidence stays accepted.
+
+Final protected-state audit (`.ocr-cache/v0-transient-history-scroll-20260924-run1.log`):
+
+- 27 changed-frame state snapshots; NEW=0, epoch=1 throughout, fallback events=0.
+- Initial 9 retained messages grew to 25 through 16 fully evidenced older-history
+  discoveries. Zero new incomplete History IDs; no IDs allocated merely for fragments.
+- Every retained logical ID's chronological order was stable. Across all 25 IDs,
+  protected field snapshots never changed: epoch, raw/normalized text digests,
+  origin, first-observed time, complete-text flag and complete-crop fingerprint.
+- Returning to the complete viewport inserted no additional IDs or timeline entries.
+  The targeted repeats retained m000003/m000004. An ambiguous older visible bubble
+  mapped to m000015 rather than m000001 without modifying persistent content.
+- This remaining visible association is accepted as best-effort, NOT a semantic
+  identity guarantee. The strict 463 -> 456px clipped-width append false negative is
+  also an accepted V0 limitation; reopen only if repeated in normal use.
+- Final implementation gates: format/full Windows build passed, zero warnings/errors;
+  252 .NET tests passed (176 Observer, 63 OCR, 6 Vision, 5 Windows, 2 Capture).
+  The unchanged Python suite previously passed 46 tests; no new OCR benchmark ran.
+  No GitHub CI checks are reported for this branch; evidence is local Windows.
+
+**Historical development evidence follows.** Earlier IN PROGRESS, blocker and pending
+statements record their original runs and are superseded by the V0 acceptance above;
+they are retained to explain the failures and decisions, not additional open gates.
 
 The rounded-cap classifier's false positive remains documented. The accepted V0
 mitigation is conservative edge exclusion, not more completeness heuristics. No
@@ -781,7 +807,9 @@ Stop for review; Phase
 
 ## Phase 4.5B — OCR trust calibration
 
-**Status: IN PROGRESS — three isolated candidate policies evaluated; none accepted.**
+**Status: research CLOSED for V0 by D-028/D-031.** The experimental stability/verifier
+policies were not accepted into production. The following is historical evidence;
+its pending labels/gates do not reopen the completed Phase 4.5 V0 acceptance.
 
 See [PHASE45B_TRUST_CALIBRATION.md](PHASE45B_TRUST_CALIBRATION.md) for rules, runtime,
 counts, cohorts, gaps and private review procedure. No production behavior changed.

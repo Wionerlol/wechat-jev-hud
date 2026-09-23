@@ -426,6 +426,14 @@ override of a resolved known window. This step never consumes an accepted append
 suffix and never changes NEW eligibility. Recovery is limited to the bounded retained
 timeline within the same epoch; it is not persistent arbitrary-history tracking.
 
+V0 accepted limitation (D-031): without native message IDs, ambiguous repeated old
+bubbles may visibly associate with another compatible retained ID after arbitrary
+scrolling. This is best-effort visual association, not a semantic guarantee. The
+required safety boundary is no scroll NEW or epoch change and no persistent content
+mutation/duplication from unbound fragments. Known complete content is preserved.
+Strict geometry may miss an append when a clipped top fragment changes width (observed
+463 -> 456px); V0 prefers that false negative over relaxing matching for scroll history.
+
 Bubble completeness uses frame-local nominal height, top/bottom distance and rounded
 background-cap evidence (D-026), not mere containment in the usable chat ROI.
 Near-boundary ambiguity is partial; closed full single/multiline shapes may still be

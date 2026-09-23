@@ -856,3 +856,29 @@ OCR, trust, completeness, identity or epoch predicate changes.
 V0 may accept ambiguous historical visible-ID reassociation only when persistent
 content/order is not polluted and scrolling emits no NEW or epoch change. Final
 manual scroll and protected-state audit are required before marking Phase 4.5 PASS.
+
+## D-031 — Phase 4.5 V0 accepted; freeze perception/observer work
+
+On 2026-09-24 the user-authorized final safety gate passed on `cde5ebf`: 27 real
+scroll state snapshots, zero NEW, epoch unchanged, no Adaptive fallback, no unbound
+incomplete History allocations. All protected fields and relative order stayed
+unchanged for all 25 retained IDs. The 9-message baseline expanded through 16 complete
+older-history discoveries, not fragment placeholders; returning to the known viewport
+did not add messages. The targeted repeated occurrences retained their IDs.
+
+Without a native WeChat message identifier, exact re-identification of ambiguous
+repeated historical bubbles after arbitrary scrolling is best-effort. A visible old
+bubble may temporarily associate with another compatible retained historical ID.
+This association is not a semantic guarantee. V0's safety contract is no scroll NEW,
+no scroll epoch changes, and no duplicate/mutated persistent content from incomplete
+fragments; the final run verified these properties, not universal identity accuracy.
+
+Accept the strict clipped-width (463 -> 456px) append false negative rather than
+loosening width/hash matching and risking history replay. Reopen only if repeated
+in normal use. Retain D-028 residual OCR risk and the 6 DIP semantic edge guard.
+Fresh Remote sending was unavailable in the last smoke; do not imply it was tested.
+Earlier real/automated evidence is retained, not represented as a new live run.
+
+Phase 4.5 is PASS for V0. Freeze append and history reconciliation, OCR extraction
+and trust; no more calibration/verifiers/heuristics. PR #5 becomes ready for external
+review, not automatically merged. Phase 5/Jev is a separate future task.

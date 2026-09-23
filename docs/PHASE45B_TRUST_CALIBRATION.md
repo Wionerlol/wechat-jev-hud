@@ -8,7 +8,8 @@ is unchanged. Raw independent agreement accepted 3/124 with Windows or OR and 0/
 with Tesseract/AND; no verifier enters production. The historical pending labels and
 corpus gaps below describe their original experiment dates, not the final decision.
 V0 uses successful Unified extraction plus explicit safety gates, not scores or
-same-model/independent agreement. Final real observer smoke remains required.
+same-model/independent agreement. Phase 4.5 V0 acceptance completed on 2026-09-24
+(D-031); this report remains historical research, not an active calibration task.
 
 ## Scope and recommendation
 
