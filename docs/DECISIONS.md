@@ -837,3 +837,22 @@ The user separately accepts the 463 -> 456px top-clipped-width append false nega
 as a V0 limitation. Keep strict width/hash matching; reopen only if it repeatedly
 affects normal use. Freeze history reconciliation after the final manual return-window
 check passes; no further OCR/Observer investigation is part of this closeout.
+
+## D-030 — Unbound incomplete History is transient visual evidence
+
+The D-029 manual run retained the targeted repeated IDs and emitted no NEW, but the
+state audit found clipped-edge placeholders inserted between known chronological
+messages and retained after return. This is persistent timeline pollution, not merely
+a best-effort visible association.
+
+Before any ID allocation, an unmatched History candidate without complete-text
+evidence is excluded from persistent message creation and insertion. It remains in
+frame-local visibility diagnostics and is omitted from the logical visible snapshot.
+No fake ID is created. Matched known partials still reuse their IDs and preserve
+complete text. Fully evidenced unseen older history still allocates and inserts a
+History message. Accepted live append suffixes are unaffected. No matching, append,
+OCR, trust, completeness, identity or epoch predicate changes.
+
+V0 may accept ambiguous historical visible-ID reassociation only when persistent
+content/order is not polluted and scrolling emits no NEW or epoch change. Final
+manual scroll and protected-state audit are required before marking Phase 4.5 PASS.

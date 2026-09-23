@@ -9,6 +9,52 @@ namespace WeChatJevHud.Observer.Tests;
 
 public sealed class MessageObserverTests
 {
+    [Theory]
+    [InlineData(20)]
+    [InlineData(190)]
+    public async Task Unbound_incomplete_history_is_transient_without_consuming_ids(int fragmentY)
+    {
+        var known = new[] { Bubble(12, 70, 120, MessageSide.Self), Bubble(12, 110, 120, MessageSide.Self),
+            Bubble(12, 150, 120, MessageSide.Self) };
+        var fragment = new DetectedBubble(new(12, fragmentY, 40, 10), MessageSide.Self, .94);
+        var older = Bubble(100, 30, 220, MessageSide.Remote);
+        var ocr = new StubOcrEngine(Ocr("好"), Ocr("好"), Ocr("好"), Ocr("older"));
+        var observer = CreateObserver(new StubBubbleDetector(known, [fragment], known, [older, .. known]), ocr);
+        var original = Frame(10, known.Select(b => (b.Bounds, (byte)120)).ToArray());
+        await observer.ObserveAsync(original, default);
+        var before = observer.State.Messages.ToArray();
+        var result = await observer.ObserveAsync(Frame(10, [(fragment.Bounds, (byte)120)]), default);
+        Assert.Empty(result.MessagesObserved);
+        Assert.Empty(result.NewMessages);
+        Assert.Empty(observer.State.VisibleMessages);
+        Assert.Equal(before.Select(m => m.Id), observer.State.Messages.Select(m => m.Id));
+        Assert.Single(result.BubbleVisibility!); // diagnostic evidence is retained without an ID
+        Assert.Equal(3, ocr.Calls);
+        await observer.ObserveAsync(original, default);
+        Assert.Equal(before.Select(m => m.Id), observer.State.VisibleMessages.Select(m => m.LogicalMessageId));
+        Assert.Equal(before.Select(Content), observer.State.Messages.Select(Content));
+        var discovery = await observer.ObserveAsync(Frame(10,
+            new[] { (older.Bounds, (byte)220) }.Concat(known.Select(b => (b.Bounds, (byte)120))).ToArray()), default);
+        var message = Assert.Single(discovery.MessagesObserved);
+        Assert.Equal("e0001-m000004", message.Id);
+        Assert.Equal(MessageObservationKind.History, message.Origin);
+        Assert.Equal(4, observer.State.Messages.Count);
+        Assert.Equal(0, observer.Counters.MessagesEmitted);
+        Assert.Equal(1, observer.State.Epoch!.Id);
+
+        static object Content(ObservedMessage m) => new
+        {
+            m.Id,
+            m.ConversationEpochId,
+            m.NormalizedText,
+            m.RawText,
+            m.Origin,
+            m.FirstObservedAt,
+            m.HasCompleteText,
+            m.CompleteCropFingerprint
+        };
+    }
+
     [Fact]
     public async Task Known_history_window_allows_one_genuinely_unseen_older_message()
     {

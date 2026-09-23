@@ -431,8 +431,11 @@ background-cap evidence (D-026), not mere containment in the usable chat ROI.
 Near-boundary ambiguity is partial; closed full single/multiline shapes may still be
 complete near the bottom. Diagnostics expose distances, height ratio, boundary risk
 and completeness reason. `IsFullyVisible` describes the current view and
-`HasCompleteText` describes stored text evidence. Unknown partials retain empty
-placeholders, skip OCR and cannot become semantic-ready. Surviving-edge reconciliation
+`HasCompleteText` describes stored text evidence. Unmatched History candidates without
+`HasCompleteTextEvidence` remain frame-local fragments: no logical ID allocation,
+timeline insertion, persistent message, or visible logical snapshot. Their bounds and
+completeness remain in frame diagnostics. Known matched partials reuse existing IDs,
+skip fresh OCR and cannot become semantic-ready. Surviving-edge reconciliation
 requires a unique neighboring translation anchor; later full crops can complete the
 same logical record, emitting an observation update but never replaying history as NEW.
 Full text already stored is preserved during clipping. Full reappearance may reuse
@@ -653,6 +656,9 @@ Diagnostics do not relax predicates or change decisions and are disabled by defa
 The same opt-in additionally emits `history_window_state` after changed-frame
 reconciliation: epoch, ordered timeline IDs and current visible snapshots, with no
 OCR text, so scroll return identity can be verified without exposing private text.
+Opt-in state diagnostics also include protected persistent fields, with raw/normalized
+text represented only by SHA-256 digests. These private artifacts permit before/after
+content audits and must remain gitignored; digests are not anonymized public data.
 
 `SemanticRegionInspector` provides the approved conservative V0 region evidence:
 consistent inset background, sufficient background area, and no large solid embedded

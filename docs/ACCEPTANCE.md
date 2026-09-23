@@ -467,6 +467,22 @@ compile error (target-typed params argument) was corrected before these gates.
 No Python/OCR code changed or model benchmark was rerun; prior Python results are
 unchanged evidence, not a newly executed gate. Manual return-window validation pending.
 
+D-029 real scroll: NEW=0, epoch=1, no fallback; target IDs m000003/m000004 retained.
+Another ambiguous old bubble associated with m000016 rather than m000001. The final
+return itself inserted no IDs, but audit found intermediate clipped fragments
+m000025/m000026/m000029 inserted among known messages and retained persistently.
+This failed the content-safety gate; it was not accepted as cosmetic drift.
+
+D-030 suppresses only unmatched incomplete History persistence before ID allocation.
+Two top/bottom regression cases failed before and passed after: no observed/persistent
+fragment, no ID consumption, no OCR call, protected stored fields/ID order unchanged
+on return; a subsequent complete older message still becomes History. Existing known
+partial recovery, genuine history discovery and live append suites remain required.
+Final manual scroll-away/back plus private protected-state audit is pending. No
+Phase 4.5 PASS or PR-ready claim until that check passes.
+Automated D-030 gates: format and full Windows build passed (zero warnings/errors);
+252 .NET tests passed, including 176 Observer tests. No OCR/model benchmark rerun.
+
 ### Observer regression gate (2026-09-22, D-024)
 
 Phase 4.5 remains blocked on real-device observer acceptance. The user confirmed that

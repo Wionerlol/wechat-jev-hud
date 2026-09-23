@@ -589,6 +589,11 @@ public sealed class MessageObserver : IMessageObserver
                 : _appendDecision.IsAppend && candidateIndex >= _appendDecision.SuffixStart
                     ? MessageObservationKind.LiveNew
                     : MessageObservationKind.History;
+            // Unbound incomplete history is frame-local evidence, not a message.
+            // Do this before allocating an ID; known matched partials were handled above,
+            // and accepted live suffixes retain their independent event classification.
+            if (origin == MessageObservationKind.History && !candidate.HasCompleteTextEvidence)
+                continue;
             var ocr = candidate.Ocr!;
             var message = new ObservedMessage(
                 $"e{_epoch!.Id:D4}-m{++_nextMessageId:D6}",
@@ -638,7 +643,7 @@ public sealed class MessageObserver : IMessageObserver
         if (_atLiveEdge) _liveTailCropFingerprint = lastCandidate?.CropFingerprint;
 
         _visibleMessages.Clear();
-        _visibleMessages.AddRange(candidates.Select(candidate => new VisibleMessageSnapshot(
+        _visibleMessages.AddRange(candidates.Where(candidate => candidate.Message is not null).Select(candidate => new VisibleMessageSnapshot(
             candidate.Message!.Id,
             candidate.Message.Side,
             candidate.Bubble.Bounds,

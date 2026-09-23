@@ -873,6 +873,17 @@ static async Task<int> ObserveWeChatAsync(string[] arguments)
                         {
                             Epoch = result.Epoch.Id,
                             TimelineIds = observer.State.Messages.Select(m => m.Id).ToArray(),
+                            PersistentEvidence = observer.State.Messages.Select(m => new
+                            {
+                                m.Id,
+                                m.ConversationEpochId,
+                                NormalizedTextDigest = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(m.NormalizedText))),
+                                RawTextDigest = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(m.RawText))),
+                                m.Origin,
+                                m.FirstObservedAt,
+                                m.HasCompleteText,
+                                m.CompleteCropFingerprint,
+                            }).ToArray(),
                             Visible = observer.State.VisibleMessages,
                         }));
                     PrintIdentityObservation(result.Identity);
