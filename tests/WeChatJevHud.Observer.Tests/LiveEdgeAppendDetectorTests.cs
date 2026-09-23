@@ -6,6 +6,42 @@ namespace WeChatJevHud.Observer.Tests;
 
 public sealed class LiveEdgeAppendDetectorTests
 {
+    [Fact]
+    public void Logged_smoke3_geometry_rejects_clipped_prefix_even_assuming_retained_hashes_match()
+    {
+        // Bounds/visibility from the real pre-anchor and first-anchor log frames.
+        // Hashes were NOT logged: tokens explicitly assume the strongest possible
+        // retained identity. This proves a geometry blocker, not a full pixel replay.
+        LiveEdgeBubble B(int x, int y, int w, int h, string assumedHash, bool full = true) =>
+            new(MessageSide.Self, new(x, y, w, h), assumedHash, full);
+        LiveEdgeBubble[] before = [B(788, 143, 223, 54, "old"), B(548, 227, 463, 82, "multiline"),
+            B(803, 401, 208, 54, "anchor2"), B(947, 485, 64, 54, "equal"), B(947, 569, 64, 54, "equal")];
+        LiveEdgeBubble[] after = [B(548, 120, 456, 44, "partial", false), B(803, 255, 208, 54, "anchor2"),
+            B(947, 339, 64, 54, "equal"), B(947, 423, 64, 54, "equal"), B(803, 569, 208, 54, "anchor3")];
+        AppendAttemptTrace? trace = null;
+        var result = _detector.Detect(before, after, new(377, 120, 741, 523), true, true, 1, t => trace = t);
+        Assert.Equal("no_ordered_live_extension", result.Reason);
+        Assert.Equal(1, trace!.CurrentStart);
+        Assert.Equal("clipped_prefix_geometry_mismatch", trace.Attempts.Single(a => a.Start == 2).Reason);
+        Assert.Equal(5, trace.Attempts.Count);
+        Assert.Equal(result, _detector.Detect(before, after, new(377, 120, 741, 523), true, true, 1));
+    }
+
+    [Fact]
+    public void Trace_reports_exact_same_fields_without_affecting_the_decision()
+    {
+        var before = new[] { Bubble(60) };
+        var after = new[] { Bubble(60, "changed", MessageSide.Remote) with { Bounds = new(30, 60, 61, 25) }, Bubble(100) };
+        AppendAttemptTrace? trace = null;
+        var result = _detector.Detect(before, after, View, true, true, diagnosticSink: t => trace = t);
+        var attempt = Assert.Single(trace!.Attempts);
+        Assert.Equal("same_failed", attempt.Reason);
+        Assert.Equal(new[] { "side", "crop_fingerprint", "width", "height" }, attempt.DifferentFields);
+        Assert.Equal(0, attempt.PreviousIndex);
+        Assert.Equal(0, attempt.CurrentIndex);
+        Assert.Equal(result, _detector.Detect(before, after, View, true, true));
+    }
+
     private readonly LiveEdgeAppendDetector _detector = new();
     private static readonly CapturePixelRect View = new(0, 20, 500, 800);
     private static LiveEdgeBubble Bubble(int y, string key = "equal", MessageSide side = MessageSide.Self) =>

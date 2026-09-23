@@ -790,7 +790,10 @@ static async Task<int> ObserveWeChatAsync(string[] arguments)
         new DarkThemeBubbleDetector(),
         unifiedOcr,
         new ChatRoiChangeDetector(),
-        new VisualConversationIdentityProvider());
+        new VisualConversationIdentityProvider(),
+        appendDiagnosticSink: Environment.GetEnvironmentVariable("WECHAT_APPEND_TRACE") == "1"
+            ? trace => Console.WriteLine("append_attempt_trace=" + JsonSerializer.Serialize(trace))
+            : null);
 
     observer.ConversationChanged += (_, eventArgs) =>
     {

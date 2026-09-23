@@ -632,6 +632,14 @@ may remain true for preserved older complete text while the current edge gate is
 false; current semantic readiness must still be false. A successful structural
 append retains LiveNew independently of OCR/trust eligibility.
 
+Opt-in `WECHAT_APPEND_TRACE=1` on the diagnostics process emits structured
+`append_attempt_trace` JSON before reconciliation: input live-edge/stable flags,
+viewport, boundary margin, ordered bubble geometry, structural visibility, 64-bit
+crop fingerprints and available previous logical IDs; each attempted start records
+its first rejected predicate and Same-field differences. It includes no OCR text.
+Array position is the bubble index. Keep redirected traces private under `.ocr-cache`.
+Diagnostics do not relax predicates or change decisions and are disabled by default.
+
 `SemanticRegionInspector` provides the approved conservative V0 region evidence:
 consistent inset background, sufficient background area, and no large solid embedded
 panel. Tiny/ambiguous interiors fail closed. It neither detects messages nor changes

@@ -421,6 +421,17 @@ format/build/full .NET gates above were rerun; the unchanged Python suite's earl
 46-test result is retained. Real `anchor-smoke-3`, two separate repeated messages,
 scroll, bottom fragment and A-B-A revalidation remains pending; Remote is unavailable.
 
+The post-split real smoke also failed: the first new anchor returned
+`no_ordered_live_extension`, then later appends returned `not_stable_live_edge`.
+The latter is a cascade, not proof of the initiating cause. Existing logs preserve
+geometry but no crop hashes or raw frames for this transition. Replaying the logged
+geometry with explicitly assumed matching retained hashes proves an independent
+`clipped_prefix_geometry_mismatch`: previous multiline width 463 versus clipped
+component width 456, translation -146, clipped bottom 164 versus predicted 163.
+This conditional geometry test is NOT a complete replay of the actual hash inputs.
+No predicate/tolerance has been changed. Full-input diagnosis remains required before
+a narrow fix and the subsequent anchor-smoke-4 acceptance run.
+
 ### Observer regression gate (2026-09-22, D-024)
 
 Phase 4.5 remains blocked on real-device observer acceptance. The user confirmed that

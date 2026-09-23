@@ -46,6 +46,7 @@ public sealed class MessageObserver : IMessageObserver
     private bool _atLiveEdge;
     private string? _liveTailCropFingerprint;
     private readonly LiveEdgeAppendDetector _appendDetector = new();
+    private readonly Action<AppendAttemptTrace>? _appendDiagnosticSink;
     private LiveEdgeAppendDecision _appendDecision = LiveEdgeAppendDecision.Suppressed("unchanged");
     private PendingConversationSwitch? _pendingSwitch;
     private bool _layoutTransitionActive;
@@ -63,7 +64,8 @@ public sealed class MessageObserver : IMessageObserver
         IOcrEngine ocrEngine,
         IChatRoiChangeDetector changeDetector,
         IConversationIdentityProvider conversationIdentityProvider,
-        ObserverOptions? options = null)
+        ObserverOptions? options = null,
+        Action<AppendAttemptTrace>? appendDiagnosticSink = null)
     {
         _chatRegionLocator = chatRegionLocator ?? throw new ArgumentNullException(nameof(chatRegionLocator));
         _bubbleDetector = bubbleDetector ?? throw new ArgumentNullException(nameof(bubbleDetector));
@@ -71,6 +73,7 @@ public sealed class MessageObserver : IMessageObserver
         _changeDetector = changeDetector ?? throw new ArgumentNullException(nameof(changeDetector));
         _conversationIdentityProvider = conversationIdentityProvider ?? throw new ArgumentNullException(nameof(conversationIdentityProvider));
         _options = options ?? new ObserverOptions();
+        _appendDiagnosticSink = appendDiagnosticSink;
         if (_options.RecentMessageLimit <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(options), "Recent message limit must be positive.");
@@ -259,7 +262,7 @@ public sealed class MessageObserver : IMessageObserver
         var previousVisibleMessages = PreviousVisibleMessages();
         _appendDecision = _appendDetector.Detect(
             previousVisibleMessages.Select(m => new LiveEdgeBubble(m.Side, m.BubbleRect,
-                _visibleMessages.First(v => v.LogicalMessageId == m.Id).CropFingerprint, m.IsFullyVisible)).ToArray(),
+                _visibleMessages.First(v => v.LogicalMessageId == m.Id).CropFingerprint, m.IsFullyVisible, m.Id)).ToArray(),
             candidates.Select(c => new LiveEdgeBubble(c.Bubble.Side, c.Bubble.Bounds, c.CropFingerprint, c.IsFullyVisible)).ToArray(),
             _chatRegion.Value,
             _atLiveEdge && (previousVisibleMessages.Count == 0
@@ -267,7 +270,7 @@ public sealed class MessageObserver : IMessageObserver
                 : previousVisibleMessages[^1].Id == _liveTailId),
             _baselineEstablished && !identityMismatch && !layoutChanged &&
             (!_layoutTransitionActive || _layoutStableObservationCount >= _options.LayoutStableObservations),
-            BoundaryMargin(_chatRegion.Value));
+            BoundaryMargin(_chatRegion.Value), _appendDiagnosticSink);
         EstimateTranslation(previousVisibleMessages, candidates);
         var canReconcileVisibleState = _baselineEstablished ||
                                        (_awaitingInitialSnapshot && _messages.Count > 0);
