@@ -907,6 +907,29 @@ Create a small manually inspectable evaluation fixture set. The goal is not "100
 
 ## Phase 6 — Anchored HUD overlay
 
+**Status: IN PROGRESS — implementation available; native/manual acceptance pending.**
+Detailed architecture, commands and evidence: [PHASE6_HUD.md](PHASE6_HUD.md), D-033.
+
+- [x] Code-owned fixed four-row composition, no model thresholds.
+- [x] Pure coordinate/layout/lifecycle tests, keyed by epoch + message ID.
+- [x] One real WPF HWND: native automated styles/no-activation/position/hit-test checks.
+- [x] Actual WeChat capture-exclusion positive control and marker-free captures at 144/96 DPI.
+- [x] Post-fix human typing-focus, Alt-Tab and minimize/restore verification.
+- [ ] Human click-through verification (native hit-test checks passed).
+- [x] Demo move/resize/150%↔100% DPI verification; automatic recovery without restart.
+- [ ] Real Remote → trusted OCR → Jev → Pending/Ready HUD with exact association.
+- [ ] Scroll-out retirement/no resurrection, A→B→A, minimize/restore matrix.
+- [ ] Live per-stage and total latency recorded.
+- [x] Full Windows final format/build/test gates recorded: 322 .NET tests passed,
+  zero failures/skips; build zero warnings/errors.
+
+30 focused Windows Overlay tests passed after the capture-audit lifecycle correction.
+User confirmed both monitor-transition recoveries and all three focus/visibility
+regressions on `afc8521`; logs show Verified on DISPLAY5/96 and DISPLAY1/144 with
+all pixel safety evidence passing. No Phase 6
+PASS claim follows from Demo or HWND style configuration alone. Perception/TypeSafe
+algorithms remain frozen; private artifacts stay gitignored. PR must remain Draft.
+
 ### Goal
 
 Show Jev judgments beside the corresponding remote message.

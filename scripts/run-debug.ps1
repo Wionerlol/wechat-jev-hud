@@ -8,7 +8,7 @@ $dotnet = if (Test-Path $localDotNet) { $localDotNet } else { (Get-Command dotne
 
 Push-Location $repositoryRoot
 try {
-    & $dotnet run --project 'src\WeChatJevHud.App\WeChatJevHud.App.csproj'
+    & $dotnet run --project 'src\WeChatJevHud.App\WeChatJevHud.App.csproj' -- --capture-debug
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 finally {

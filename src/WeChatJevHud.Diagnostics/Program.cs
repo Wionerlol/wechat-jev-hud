@@ -754,31 +754,13 @@ static async Task<int> ObserveWeChatAsync(string[] arguments)
             $"Tesseract data was not found at {tessdata}. Complete the Phase 3 OCR setup or pass --tessdata.");
     }
 
-    using var tesseractRaw = new TesseractOcrEngine(tessdata, lowConfidenceThreshold: 0.90);
-    using var tesseractUpscaled = new TesseractOcrEngine(
-        tessdata,
-        lowConfidenceThreshold: 0.90,
-        preparation: OcrImagePreparation.Upscaled);
-    var adaptive = new AdaptiveOcrEngine(
-        [tesseractRaw, tesseractUpscaled],
-        new WindowsMediaOcrEngine("zh-Hans-CN", OcrImagePreparation.Upscaled),
-        confidenceThreshold: 0.90);
-    var productionOcrCounters = new ProductionOcrCounters();
-    var paddleWorker = new PaddleWorkerClient(
-        PaddleWorkerOptions.Create(
-            paddlePython,
-            [
-                Path.Combine(Environment.CurrentDirectory, "scripts", "paddle_ocr_worker.py"),
-                "--model",
-                "PP-OCRv6_small_rec",
-                "--device",
-                paddleDevice,
-                "--warmup-count",
-                "1",
-            ]),
-        productionOcrCounters,
-        paddleWorkerDebug ? line => Console.Error.WriteLine($"[paddle] {line}") : null);
-    await using var paddleWorkerLifetime = paddleWorker;
+    await using var perception = new WeChatJevHud.Runtime.PerceptionRuntime(Environment.CurrentDirectory,
+        paddlePython, paddleDevice, tessdata,
+        paddleWorkerDebug ? line => Console.Error.WriteLine($"[paddle] {line}") : null,
+        Environment.GetEnvironmentVariable("WECHAT_APPEND_TRACE") == "1"
+            ? trace => Console.WriteLine("append_attempt_trace=" + JsonSerializer.Serialize(trace)) : null);
+    var productionOcrCounters = perception.OcrCounters;
+    var paddleWorker = perception.Worker;
     try
     {
         var runtime = await paddleWorker.InitializeAsync(CancellationToken.None);
@@ -794,19 +776,7 @@ static async Task<int> ObserveWeChatAsync(string[] arguments)
             $"Paddle worker unavailable ({exception.Message}); observer will use Adaptive OCR fallback.");
     }
 
-    var unifiedOcr = new UnifiedPaddleOcrEngine(
-        new PaddleRecognitionOcrEngine(paddleWorker),
-        adaptive,
-        productionOcrCounters);
-    IMessageObserver observer = new MessageObserver(
-        new DarkThemeChatRegionLocator(),
-        new DarkThemeBubbleDetector(),
-        unifiedOcr,
-        new ChatRoiChangeDetector(),
-        new VisualConversationIdentityProvider(),
-        appendDiagnosticSink: Environment.GetEnvironmentVariable("WECHAT_APPEND_TRACE") == "1"
-            ? trace => Console.WriteLine("append_attempt_trace=" + JsonSerializer.Serialize(trace))
-            : null);
+    IMessageObserver observer = perception.Observer;
 
     observer.ConversationChanged += (_, eventArgs) =>
     {

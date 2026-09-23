@@ -851,17 +851,24 @@ Never:
 
 The code, not Jev, decides what to display.
 
-Example policy:
-- only show a Noul row when probability is far enough from indecision to be useful;
-- always allow debug mode to show raw outputs;
-- show at most a few high-signal rows in collapsed HUD;
-- expanded HUD may show all configured judgments.
+Phase 6 uses four fixed rows without probability thresholds: selected speech act
+and its option probability, expects_response yes probability, references_prior_context
+yes probability, urgency weighted score / 3. Choice/Score distribution confidence
+never substitutes for those values. Other judgments/distributions remain available
+in the optional diagnostic controller. Earlier threshold suggestions are superseded.
 
 Avoid turning several weak signals into a strong psychological claim.
 
 ---
 
 ## 14. Overlay/HUD
+
+Current implementation/acceptance contract: [PHASE6_HUD.md](PHASE6_HUD.md), D-033.
+One transparent WPF HWND, default three newest eligible cards, local DIP layout,
+physical desktop SetWindowPos, epoch+message identity, two-changed-observation
+disappearance grace and permanent retirement on scroll-out. Temporarily hidden
+foreground/minimize/layout/pending-identity states do not retire items. No historical
+resurrection, no text/default screenshot persistence. Phase 6 is not yet PASS.
 
 ### Window behavior
 
@@ -889,12 +896,13 @@ The current WeChat layout has substantial empty space to the right of remote bub
 
 ### Collapsed view
 
-Initially show at most 2–4 concise rows, for example:
+Four fixed rows:
 
 ```text
-询问/确认       88%
+询问            88%
 期待回应         91%
 依赖前文         79%
+紧迫度         0.4/3
 ```
 
 ### Expanded view
