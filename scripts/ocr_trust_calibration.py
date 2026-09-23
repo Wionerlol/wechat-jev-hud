@@ -136,6 +136,8 @@ def evaluate_row(fixture, probes, review, side, image_path):
                 is_semantically_equivalent=True if exact else review.get('semantically_equivalent'),
                 is_semantically_dangerous_error=False if exact else review.get('dangerous_error'),
                 is_polarity_error=False if exact else review.get('polarity_error'),
+                review_reason=review.get('review_reason'),
+                review_status=review.get('review_status', 'unreviewed_semantics'),
                 punctuation_spacing_only_hint=(not exact and re.sub(r'(?<=[,.;:!?]) +', '', expected) == re.sub(r'(?<=[,.;:!?]) +', '', text)),
                 line_count=evidence['detected_line_count'], dpi=fixture.get('CaptureDpi'),
                 self_or_remote=review.get('side', side['side']), side_evidence=side,
@@ -193,7 +195,7 @@ def report(output, rows, metadata):
             page.append('<article><h3>' + esc(row['fixture']) + '</h3><div class="crop"><img src="' + esc(row['image']) + '"></div>')
             fields = {k: row[k] for k in ('expected_text', 'paddle_output', 'raw_exact', 'normalized_exact', 'raw_CER',
                       'is_semantically_equivalent', 'is_semantically_dangerous_error', 'is_polarity_error',
-                      'line_count', 'dpi', 'self_or_remote', 'review', 'evidence', 'decisions', 'probes')}
+                      'review_reason', 'review_status', 'line_count', 'dpi', 'self_or_remote', 'review', 'evidence', 'decisions', 'probes')}
             page.append('<pre>' + esc(json.dumps(fields, ensure_ascii=False, indent=2)) + '</pre></article>')
     (output / 'review.html').write_text('\n'.join(page), encoding='utf-8')
     md = ['# Private Phase 4.5B trust calibration', '',

@@ -57,6 +57,16 @@ class CalibrationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             private_output(Path('docs/trust-private'))
 
+    def test_ai_review_suggestion_does_not_become_human_semantic_label(self):
+        review = dict(self.review(), review_status='ai_visual_pending_human',
+                      review_reason='Needs human decision',
+                      proposed_semantic_review={'is_semantically_equivalent': True})
+        row = evaluate_row(self.fixture(), self.probes('行'), review, dict(side='Self'), 'crop.png')
+        self.assertIsNone(row['is_semantically_equivalent'])
+        self.assertIsNone(row['is_semantically_dangerous_error'])
+        self.assertIsNone(row['is_polarity_error'])
+        self.assertEqual(row['review_reason'], 'Needs human decision')
+
 
 if __name__ == '__main__':
     unittest.main()

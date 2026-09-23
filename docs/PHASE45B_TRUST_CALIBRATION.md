@@ -137,3 +137,70 @@ score independence, unsupported Unicode/structure, stale labels, private-output
 constraints, raw Latin-spacing truth and alias/unknown-DPI accounting. The actual
 GPU experiment ran on all 76 distinct crops. Production source/worker files are
 unchanged; prior .NET evidence was not rerun or relabeled as a new integration run.
+
+## Focused Remote polarity follow-up (diagnostic only)
+
+The user rejected all three stability proposals for production. A focused audit uses
+only the two distinct non-exact Remote crops (three aliased entries), one resident
+`PP-OCRv6_small_rec`, no detection, and exactly these inputs:
+
+- A: original RGB pixels.
+- B: `255 - RGB`, converting the dark background/light text to light background/dark
+  text without thresholding, clipping, padding or geometry change.
+- C: standard luminance grayscale, converted to RGB without contrast stretching.
+
+Native Windows GPU baseline assertion against recorded expected labels fails (0/2).
+All six audit recognitions reproduce the same recorded non-exact outputs: inversion
+corrects 0/2, grayscale corrects 0/2, neither introduces a different output. Scores
+remain above 0.997 but have no trust role. No new generic stability probes or
+production preprocessing changes. Private images/results:
+`.ocr-cache/phase4.5b-trust/remote-polarity/{results.json,review.html}`.
+
+This finds no evidence that **these two simple polarity treatments** repair the
+recorded failures. It does not prove a model-intrinsic cause or rule out all rendering
+effects. Ground truth must also be verified: AI visual review raised a transcription
+question about one source glyph label. The immutable expected labels/raw exactness
+have not been changed to agree with OCR.
+
+All five non-exact entries have been visually inspected by the assistant. Explicit
+semantic fields remain null pending actual human approval; separate AI suggestions,
+`review_reason` and `review_status=ai_visual_pending_human` are recorded in the private
+`semantic-review-pending.json` and review HTML. In particular, the two English alias
+entries have a proposed spacing-only equivalence, while the three Chinese entries
+require source-transcription and semantic review. Do not call AI inspection a completed
+human semantic review or convert unknown dangerousness to false.
+
+### Independent verifier recommendation (design only)
+
+If human transcription confirms the substantive errors, evaluate a genuinely
+independent verifier before automatic trust promotion. A second call/representation
+of the same Paddle recognizer is not such a verifier. No verifier is implemented here.
+
+- Unified Paddle remains the sole successful production text source. Adaptive stays
+  runtime-failure-only and untrusted, never the normal extraction route.
+- A verifier independently reads only the same complete semantic-region crop, without
+  seeing Paddle's text first, to limit confirmation bias. Compare its evidence with
+  the immutable Paddle candidate afterward; never replace or merge candidate text.
+- The comparison returns Agreement / Disagreement / Inconclusive, provenance, aligned
+  disagreements (especially negation/digits), timings and optional engine diagnostics.
+  It does not manufacture OcrConfidence or equate agreement to correctness.
+- Failure, missing evidence or disagreement cannot promote trust. Any future positive
+  rule needs calibration on matched real Self/Remote, short/polarity, multiline and
+  held-out examples; independent engines can also share errors (D-019).
+- Visibility/complete-text/normal-completion/nonempty/no-fallback and region-separation
+  gates still precede verification. The known completeness blocker remains deferred.
+
+### Real expansion status
+
+The current live frame was captured and inspected but still showed the prior test
+page, not the six requested new concepts. No new crop is claimed as collected.
+Private batch files prepare 24 Remote short texts and matched 24 Self where practical:
+missing concepts, polarity pairs, common short phrases and the difficult glyph cases.
+User preparation/confirmation is required; use existing collection tooling and inspect
+every crop. Do not turn side imbalance into a side-based trust rule.
+
+Follow-up validation: native Windows Python static compilation and all 46 Python
+tests passed. The baseline `--assert-exact` intentionally failed against the recorded
+labels (0/2); the six-run audit completed successfully but corrected neither crop.
+No .NET/production files changed and .NET gates were not rerun. Private artifacts
+remain gitignored. Human labels and new real captures are unfinished, not waived.

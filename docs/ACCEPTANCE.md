@@ -705,6 +705,13 @@ counts, cohorts, gaps and private review procedure. No production behavior chang
   require real capture. Existing side labels are inferred; missing DPI stays unknown.
 - Private review HTML/JSON/Markdown are in `.ocr-cache/phase4.5b-trust/`.
 - Overall Phase 4.5 remains blocked by completeness and unaccepted trust calibration.
+- Focused Remote polarity audit: 2 distinct crops / 3 entries; raw, light-background
+  inversion and contrast-preserving grayscale all retain the same recorded non-exact
+  outputs (6 real recognitions, no corrections). This is not proof of intrinsic cause;
+  source transcription and actual human semantic review remain pending. AI visual
+  suggestions are not human labels. No expected-label edits or production changes.
+- Expansion batches are prepared (24 Remote plus matched Self where practical), but
+  new messages are not yet visible/captured. No synthetic acceptance samples.
 
 ## Phase 5 — Jev integration
 
