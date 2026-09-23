@@ -41,6 +41,7 @@ public static class ImageCropExtractor
                 bounds.Height),
             frame.Method,
             frame.CapturedAt,
-            frame.Duration);
+            frame.Duration,
+            frame.DpiY);
     }
 }

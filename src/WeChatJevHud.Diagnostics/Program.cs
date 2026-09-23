@@ -882,7 +882,9 @@ static async Task<int> ObserveWeChatAsync(string[] arguments)
                             $"distance_to_top={visibility.Completeness?.DistanceToTop} distance_to_bottom={visibility.Completeness?.DistanceToBottom} " +
                             $"bubble_height={visibility.Completeness?.BubbleHeight} nominal_full_bubble_height={visibility.Completeness?.NominalFullBubbleHeight} " +
                             $"height_ratio={visibility.Completeness?.HeightRatio:F3} boundary_risk={visibility.Completeness?.BoundaryRisk} " +
-                            $"completeness_reason={visibility.Completeness?.Reason}");
+                            $"completeness_reason={visibility.Completeness?.Reason} " +
+                            $"semantic_edge_guard_px={visibility.SemanticEdge?.GuardPixels} semantic_edge_excluded={visibility.SemanticEdge?.Excluded} " +
+                            $"semantic_region_verified={visibility.SemanticRegion?.Verified} semantic_region_reason={visibility.SemanticRegion?.Reason}");
                     foreach (var id in result.DuplicateMessageIds)
                     {
                         Console.WriteLine($"[epoch {result.Epoch.Id}] duplicate suppressed id={id}");
@@ -981,6 +983,7 @@ static string ExtractionDiagnostic(ObservedMessage message)
         $"detection_ms={extraction?.DetectionElapsed.TotalMilliseconds:F1} " +
         $"recognition_ms={extraction?.RecognitionElapsed.TotalMilliseconds:F1} " +
         $"adaptive_fallback={diagnostics?.RuntimeFallback.ToString().ToLowerInvariant()} " +
+        $"trust_basis={diagnostics?.TrustBasis} " +
         $"quote_separation_unverified={diagnostics?.QuoteSeparationUnverified.ToString().ToLowerInvariant()}";
 }
 

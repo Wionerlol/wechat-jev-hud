@@ -6,6 +6,21 @@ namespace WeChatJevHud.Ocr.Tests;
 
 public sealed class UnifiedPaddleOcrEngineTests
 {
+    [Fact]
+    public async Task Explicit_safe_input_promotes_success_without_adaptive_or_score_confidence()
+    {
+        await using var client = new Client();
+        var adaptive = new Stub(null);
+        var result = await new UnifiedPaddleOcrEngine(new PaddleRecognitionOcrEngine(client), adaptive)
+            .RecognizeAsync(Crop() with { SemanticEvidence = new(true, true, true) }, default);
+        Assert.True(result.IsTrustedForSemantics);
+        Assert.Null(result.OcrConfidence);
+        Assert.False(result.Diagnostics!.QuoteSeparationUnverified);
+        Assert.Equal(OcrTrustBasis.V0AcceptedResidualRiskHardGate, result.Diagnostics.TrustBasis);
+        Assert.Equal("好", result.RawText);
+        Assert.Equal(0, adaptive.Calls);
+    }
+
     [Theory]
     [InlineData("好", OcrTextStatus.LowConfidence)]
     [InlineData("", OcrTextStatus.NoText)]
@@ -63,7 +78,7 @@ public sealed class UnifiedPaddleOcrEngineTests
         await using var client = new Client { InvalidBox = true };
         var adaptive = new Stub(new OcrResult("fallback", .95, OcrTextStatus.Recognized, "fallback"));
         var result = await new UnifiedPaddleOcrEngine(new PaddleRecognitionOcrEngine(client), adaptive)
-            .RecognizeAsync(Crop(), default);
+            .RecognizeAsync(Crop() with { SemanticEvidence = new(true, true, true) }, default);
         Assert.Equal(1, adaptive.Calls);
         Assert.False(result.IsTrustedForSemantics);
         Assert.True(result.Diagnostics!.RuntimeFallback);

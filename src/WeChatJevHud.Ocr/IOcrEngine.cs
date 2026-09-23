@@ -13,7 +13,11 @@ public interface IOcrEngine
 public sealed record ImageCrop(
     CapturedFrame Frame,
     CapturePixelRect Bounds,
-    OcrCropRole Role = OcrCropRole.MainMessage);
+    OcrCropRole Role = OcrCropRole.MainMessage,
+    OcrInputEvidence? SemanticEvidence = null);
+
+/// <summary>Caller-owned safety facts, not a claim of transcript accuracy.</summary>
+public sealed record OcrInputEvidence(bool HasCompleteText, bool RegionSeparationVerified, bool OutsideSemanticEdgeGuard);
 
 public enum OcrCropRole
 {
@@ -64,6 +68,7 @@ public enum OcrTrustBasis
     None,
     AdaptiveTrusted,
     IndependentEngineAgreement,
+    V0AcceptedResidualRiskHardGate,
 }
 
 public enum OcrTextStatus

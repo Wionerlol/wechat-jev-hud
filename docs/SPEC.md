@@ -553,15 +553,20 @@ engine-specific evidence. For Paddle, `EngineScoreKind` is `paddle_rec_score`, w
 `OcrConfidence` is null. `rec_score` is not a correctness probability and cannot
 establish trust.
 
-Successful Paddle never invokes Adaptive. Non-empty output remains `LowConfidence`,
-empty output `NoText`, and semantic-ready remains false pending separate calibration.
+Successful Paddle never invokes Adaptive. Under the accepted V0 D-028 policy,
+non-empty output may become `Recognized` only with explicit complete-text,
+semantic-region-separation and outside-edge-zone input evidence, normally completed
+Unified extraction and valid line structure. Missing evidence remains `LowConfidence`;
+empty output remains `NoText`. SemanticReady is permission under accepted residual
+risk, not evidence that TranscriptExact is true. No model score or verifier participates.
 Only runtime/model/protocol failure invokes Adaptive, whose output is explicitly untrusted.
-No score threshold or replacement trust calibration is introduced. Diagnostics retain
+No score threshold or further trust calibration is introduced. Diagnostics retain
 line count, clipped boxes, per-line raw text/rec_score, composed raw output, detection,
 recognition, worker-total and roundtrip times. Multiline has no fabricated aggregate score.
 Independent `QuotedText` crops are processed separately. Main-message crops carry
-`QuoteSeparationUnverified=true` because reliable internal quote geometry is not yet
-available; this is uncertainty, not a claim that every bubble contains a quote.
+`QuoteSeparationUnverified=true` unless the approved conservative single-region check
+supplies evidence. Independent quoted crops are not merged into main text. Automatic
+quote splitting is unavailable; ambiguous background/panel evidence stays untrusted.
 
 The completed prerequisite input audit used matched 96-DPI and 144-DPI real bubble
 crops. Experimental audit tooling derives the text
@@ -601,8 +606,8 @@ when it yields two or more. D-022's candidate is now implemented under D-023.
 The old custom router and normal Adaptive fusion are removed from observer wiring;
 trust calibration remains deferred.
 
-Phase 4.5B now evaluates trust in isolated Python tooling only (D-027); production
-still follows the conservative behavior above. Evaluation requires separately recorded
+Phase 4.5B experiments (D-027) are now frozen by D-028; no further verifier or
+same-model probes enter production. Historical evaluation required separately recorded
 manual full-crop/region provenance and excludes known partials, rather than relying on
 the currently defective completeness classifier. Proposed trust decisions cannot
 override visibility, completeness, empty/error/fallback or quote-separation gates.
@@ -610,6 +615,22 @@ Raw exactness, normalized equality, semantic equivalence and dangerous/polarity 
 remain separate; unknown semantic labels are not counted as confirmed safe outcomes.
 Same-model and cross-representation stability are correlated evidence, not confidence.
 The tested stability proposals still trust substantive errors and are not accepted.
+
+V0 applies a separate 6 DIP semantic edge guard, converted using the capture monitor's
+actual vertical DPI. A bubble with top or bottom usable-ROI distance below the rounded
+guard is treated as incomplete evidence regardless of rounded-cap diagnostics. It
+may reconcile visually but cannot gain semantic readiness or replace complete text;
+unknown partial text is not OCRed. Full crops outside the guard still require the
+other hard gates. Native capture propagates DPI explicitly; offline fixtures default
+to 96 unless supplied. No desktop resolution or message-side rule is involved.
+
+`SemanticRegionInspector` provides the approved conservative V0 region evidence:
+consistent inset background, sufficient background area, and no large solid embedded
+panel. Tiny/ambiguous interiors fail closed. It neither detects messages nor changes
+the crop sent to Paddle. Evidence is refreshed for currently visible candidates,
+including reused OCR; unknown/embedded regions stay untrusted. This is not a complete
+quote-layout parser: visually indistinguishable same-background quotes remain residual
+risk. An independently supplied semantic crop still needs explicit input evidence.
 
 ---
 

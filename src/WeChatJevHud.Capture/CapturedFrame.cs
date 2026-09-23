@@ -12,12 +12,14 @@ public sealed class CapturedFrame
         DesktopPixelRect desktopBounds,
         CaptureMethod method,
         DateTimeOffset capturedAt,
-        TimeSpan duration)
+        TimeSpan duration,
+        uint dpiY = 96)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
         ArgumentOutOfRangeException.ThrowIfLessThan(stride, checked(width * 4));
         ArgumentNullException.ThrowIfNull(bgra32Pixels);
+        ArgumentOutOfRangeException.ThrowIfZero(dpiY);
         if (bgra32Pixels.Length != checked(stride * height))
         {
             throw new ArgumentException("Pixel buffer length must equal stride multiplied by height.", nameof(bgra32Pixels));
@@ -31,6 +33,7 @@ public sealed class CapturedFrame
         Method = method;
         CapturedAt = capturedAt;
         Duration = duration;
+        DpiY = dpiY;
     }
 
     public int Width { get; }
@@ -48,6 +51,9 @@ public sealed class CapturedFrame
     public DateTimeOffset CapturedAt { get; }
 
     public TimeSpan Duration { get; }
+
+    /// <summary>Capture monitor DPI. Offline callers default to 96 unless supplied explicitly.</summary>
+    public uint DpiY { get; }
 }
 
 public enum CaptureMethod

@@ -1,5 +1,15 @@
 # Phase 4.5B — OCR trust calibration (experimental, not accepted)
 
+**Historical experiments, now frozen by D-028.** The user accepted V0 residual risk
+and stopped OCR/verifier research. Combined evidence is 119/124 literal exact on
+byte-distinct reviewed real crops; all five non-exact Paddle outputs now have human
+labels: semantically equivalent, non-dangerous, non-polarity-changing. Raw exactness
+is unchanged. Raw independent agreement accepted 3/124 with Windows or OR and 0/124
+with Tesseract/AND; no verifier enters production. The historical pending labels and
+corpus gaps below describe their original experiment dates, not the final decision.
+V0 uses successful Unified extraction plus explicit safety gates, not scores or
+same-model/independent agreement. Final real observer smoke remains required.
+
 ## Scope and recommendation
 
 Unified extraction is accepted separately. This experiment changes no production

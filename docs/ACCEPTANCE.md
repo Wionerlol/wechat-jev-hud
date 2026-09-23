@@ -384,9 +384,32 @@ Final manual acceptance evidence (2026-09-21):
 
 ## Phase 4.5 — Production OCR runtime
 
-**Status: IN PROGRESS — Unified extraction accepted separately; Phase 4.5B trust
-calibration is experimental. The confirmed partial-completeness defect remains a
-deferred blocker. No overall PASS.**
+**Status: IN PROGRESS — V0 architecture and residual OCR risk accepted (D-028).
+Further OCR research is stopped. Hard-gate/edge-guard integration and the final
+real-machine smoke workflow must pass before overall PASS or PR #5 readiness.**
+
+V0 closeout requirements:
+
+- [x] Successful complete Unified Paddle output can become semantic-ready through
+  hard facts only, including verified semantic-region separation.
+- [x] Deterministic 6 DIP edge-guard tests cover 96/144/192 DPI and the known 144-DPI
+  496x26 / 2px-gap excluded versus 496x111 / 13px-gap allowed geometry.
+- [x] Full Windows format/build/.NET and Python regression gates completed for closeout.
+- [ ] Final real smoke: short Self, short Remote, negation, mixed, two-line, repeated
+  identical append, scroll away/back, A-B-A, known bottom fragment, minimize/restore.
+- [ ] Healthy-run fallback count zero; normal complete Paddle semantic-ready;
+  edge fragment untrusted and cannot overwrite complete text; no duplicate/replay/
+  epoch isolation regression. Existing D-025 manual evidence stays accepted.
+
+The rounded-cap classifier's false positive remains documented. The accepted V0
+mitigation is conservative edge exclusion, not more completeness heuristics. No
+extra verifier/calibration cycle is required. Semantic readiness is not exactness.
+
+Automated closeout evidence: Windows format and build passed (0 warnings/errors),
+242 .NET tests passed (166 Observer, 63 OCR, 6 Vision, 5 Windows, 2 Capture), and
+46 Python deterministic tests passed. Region tests cover single-background multiline,
+embedded panels, tiny/ambiguous input, DPI and Observer evidence/cached-text safety.
+No model benchmark was rerun. These do not substitute for the final real smoke gate.
 
 ### Observer regression gate (2026-09-22, D-024)
 

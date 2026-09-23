@@ -608,6 +608,9 @@ coverage remains limited. Phase 4.5 is IN PROGRESS.
 
 ## D-023 — Unified Paddle is the production extractor; trust calibration is separate
 
+The extraction decision remains current; always-untrusted behavior is superseded by
+D-028's accepted V0 residual-risk hard gate.
+
 The user accepted D-022's Unified benchmark. The normal observer now calls one
 persistent native Windows worker containing `PP-OCRv6_small_det` and
 `PP-OCRv6_small_rec`. Both load and warm once. Detection only segments text inside
@@ -752,3 +755,45 @@ failing words, whitelist sides, or call repeated model agreement independent con
 Non-exact raw output, normalized equality, semantic equivalence, dangerous error and
 polarity error are separate fields; non-exact semantic labels stay unknown until review.
 Full results and limitations: `docs/PHASE45B_TRUST_CALIBRATION.md`.
+
+## D-028 — Freeze V0 extraction and accept bounded residual OCR risk
+
+The user stopped further OCR/trust research. Unified Paddle (small_det inside a
+Phase 2 bubble; original whole crop for 0/1 lines, ordered line crops for 2+) remains
+the sole normal text source. Adaptive is runtime-failure-only and always untrusted.
+No verifier, stability probe, score threshold, side rule or polarity preprocessing
+is added. D-023's always-untrusted production policy is superseded by an explicit
+V0 hard gate, not a claim of calibrated accuracy.
+
+Evidence: 124 byte-distinct reviewed real crops, 119 literal exact; all five
+non-exact Paddle crops are human-labelled semantically equivalent, non-dangerous
+and non-polarity-changing. Independent Windows/Tesseract raw-agreement coverage was
+too low to justify production complexity. This is limited observed evidence, NOT
+proof that future OCR cannot change meaning. V0 explicitly accepts that residual
+risk. SemanticReady must never imply TranscriptExact.
+
+Required hard facts: normally completed Unified extraction, no runtime fallback,
+non-empty raw text, complete-text evidence, verified semantic-region separation,
+valid line structure, and outside a conservative viewport-edge exclusion zone.
+Scores and expected labels never enter this decision. Region verification cannot
+be manufactured from successful OCR alone. The user approved a conservative
+single-background-region inspector, separate from Phase 2 detection and Paddle input.
+It checks a consistent inset perimeter/background and rejects large solid embedded
+panels or ambiguous interiors. It never splits quotes or changes OCR pixels. The
+current region is checked even when complete OCR text is reused; ambiguity disables
+semantic readiness without rewriting stored text. A quote rendered indistinguishably
+on the same background may evade this limited visual check; no universal quote parser
+or semantic separation guarantee is claimed. This remains part of accepted V0 risk.
+
+The edge zone is round(6 * current capture DPI / 96) physical pixels at both usable
+chat ROI boundaries. Distances strictly less than that guard exclude semantic use,
+OCR of newly incomplete evidence and complete-text replacement; visual reconciliation
+continues. At 144 DPI, the known 496x26 / 2px-gap fragment is excluded; the full
+496x111 / 13px-gap counterpart is outside the guard. This is a deliberate conservative
+V0 exclusion, not a fix or universal proof for the rounded-cap completeness classifier.
+Existing diagnostics may remain. D-025 append and identity algorithms remain frozen.
+
+Completion requires the final short Self/Remote, negation, mixed, two-line, repeated
+append, scroll, A-B-A, known partial and minimize/restore real smoke workflow. No
+Phase 4.5 PASS or PR-ready claim before that gate passes. Only a clear meaning-changing
+production failure reopens OCR research; a literal mismatch alone does not.

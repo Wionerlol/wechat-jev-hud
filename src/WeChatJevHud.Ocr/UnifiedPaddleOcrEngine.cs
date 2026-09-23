@@ -17,10 +17,18 @@ public sealed class UnifiedPaddleOcrEngine(
         {
             // No second opinion, confidence threshold, or NoText rerouting.
             var result = await paddle.RecognizeAsync(crop, cancellationToken).ConfigureAwait(false);
+            var ready = V0OcrSemanticGate.Allows(result, crop.SemanticEvidence);
             return result with
             {
+                Status = ready ? OcrTextStatus.Recognized : string.IsNullOrWhiteSpace(result.RawText)
+                    ? OcrTextStatus.NoText : OcrTextStatus.LowConfidence,
                 Diagnostics = result.Diagnostics is { } diagnostics
-                    ? diagnostics with { TotalElapsed = timer.Elapsed }
+                    ? diagnostics with
+                    {
+                        TotalElapsed = timer.Elapsed,
+                        TrustBasis = ready ? OcrTrustBasis.V0AcceptedResidualRiskHardGate : OcrTrustBasis.None,
+                        QuoteSeparationUnverified = !(crop.SemanticEvidence?.RegionSeparationVerified ?? crop.Role == OcrCropRole.QuotedText),
+                    }
                     : null,
             };
         }

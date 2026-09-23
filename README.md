@@ -3,16 +3,17 @@
 This checkout implements accepted Phases 0–4 and an in-progress Phase 4.5 production
 OCR runtime. It does not implement Phase 5 Jev calls or the HUD overlay.
 
-Phase 4.5B [trust calibration](docs/PHASE45B_TRUST_CALIBRATION.md) is experimental:
-same-model stability improved proposed coverage but still trusted substantive errors.
-No production trust change. The real 496×26 partial-bubble misclassification remains
-a deferred blocker; overall Phase 4.5 is not PASS.
+Phase 4.5B research is frozen by D-028: 119/124 distinct reviewed crops were literally
+exact; all five non-exact outputs were human-labelled semantically equivalent. V0
+accepts residual OCR risk, not a guarantee of correctness. Production uses hard safety
+gates, a conservative region check and a 6 DIP viewport-edge exclusion. The final
+real-machine smoke test is still required; overall Phase 4.5 is not PASS.
 
 ## What is available
 
 Current Phase 4.5 extraction: Unified Paddle, production parity **79/84**, no Adaptive
-fallbacks on the healthy corpus. Real observer matrix and trust calibration are still
-pending; this is not Phase 4.5 PASS. Run the actual worker evaluation with
+fallbacks on the healthy corpus. Final V0 observer smoke acceptance is still
+pending; no further OCR calibration is planned. Historical worker evaluation uses
 `scripts/evaluate-production-ocr.ps1`, then
 `python -m scripts.compare_production_unified --root .ocr-cache/phase4.5-paddle-bubble`
 to check the immutable benchmark parity. Reports remain private under `.ocr-cache`.
@@ -23,9 +24,9 @@ NEW detection now uses a separate live-edge append detector before history match
 (D-025); inspect `live_edge_append` decisions. Ambiguous moving all-equal views remain
 suppressed. D-025's anchored repeated appends, scrolling and A→B→A are manually
 accepted. The bottom-clipped-history fix (D-026) uses scale/rounded-cap evidence and
-has a confirmed failing private clipped/full pair and still needs a later fix and
-real scroll regression; it is frozen during trust calibration.
-Extraction/trust calibration is unchanged. In `observe.ps1` diagnostics, inspect
+has a confirmed failing private clipped/full pair. V0 mitigates it with a 6 DIP semantic
+edge exclusion rather than claiming the rounded-cap classifier is fixed.
+In `observe.ps1` diagnostics, inspect
 `occurrence`, `title_visual_distance`, and `bubble_visibility` records. Repeat Self
 and Remote equal-message appends, scroll away/back, A→B→A and clipped multiline history.
 
@@ -197,9 +198,10 @@ message crops. Detection occurs only inside Phase 2's isolated bubbles. Zero/one
 line uses the original raw whole crop; 2+ lines use clipped, ordered line crops and
 CJK/Latin wrap composition. No preprocessing or custom scale-aware router is used.
 Adaptive runs only on worker/protocol/device failure, never as a normal second opinion.
-Paddle and fallback text remain untrusted `LowConfidence` candidates pending separate
-trust calibration. Per-line scores are diagnostic only; `OcrConfidence` remains null
-for Paddle. Main crops retain explicit unknown quote-separation metadata.
+Successful Paddle may become semantic-ready only with complete text, verified single
+semantic region, valid lines and outside the 6 DIP edge guard. Unknown regions and
+Adaptive fallback remain untrusted. Per-line scores are diagnostic only;
+`OcrConfidence` remains null for Paddle. Semantic-ready does not mean transcript-exact.
 Worker/library stderr is suppressed by default. `-PaddleWorkerDebug` explicitly
 enables privacy-safe troubleshooting metadata (severity category and character count),
 never the raw third-party stderr line; output is capped to avoid log flooding.
@@ -226,8 +228,8 @@ raw/normalized accuracy, Paddle `rec_score`, Adaptive output, trust, CER,
 startup/warmup and request timings, fallbacks, polarity errors, and trusted-wrong count
 separate. Crops and reports remain gitignored.
 
-Phase 4.5 remains IN PROGRESS: Unified production extraction is implemented; real observer
-acceptance and separate trust calibration remain. The historical input audit compared
+Phase 4.5 remains IN PROGRESS: final V0 observer smoke acceptance remains; further
+trust research is stopped. The historical input audit compared
 the same detected bubble as a raw crop, a contrast-derived text ROI with safe padding,
 32/40/48 px text-band normalization using nearest/bicubic/Lanczos interpolation, and
 a conservative grayscale/background-normalized Lanczos variant. It does not use text

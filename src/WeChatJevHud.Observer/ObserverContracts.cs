@@ -126,10 +126,12 @@ public sealed record ObservedMessage(
     OcrDiagnostics? OcrDiagnostics = null,
     bool IsFullyVisible = true,
     bool HasCompleteText = true,
-    string? CompleteCropFingerprint = null)
+    string? CompleteCropFingerprint = null,
+    bool SemanticRegionVerified = false)
 {
     public bool IsTrustedForSemantics =>
-        IsFullyVisible && HasCompleteText && OcrStatus == OcrTextStatus.Recognized &&
+        IsFullyVisible && HasCompleteText && SemanticRegionVerified && OcrStatus == OcrTextStatus.Recognized &&
+        OcrDiagnostics?.RuntimeFallback != true && OcrDiagnostics?.QuoteSeparationUnverified != true &&
         !string.IsNullOrWhiteSpace(NormalizedText);
 }
 
@@ -186,7 +188,8 @@ public sealed record OccurrenceMatchDiagnostic(string PreviousId, int PreviousY,
     double EstimatedDeltaY, double MatchCost, int AmbiguousOccurrenceCount);
 
 public sealed record BubbleVisibilityDiagnostic(CapturePixelRect BubbleBounds, CapturePixelRect ChatRoi, bool IsFullyVisible,
-    BubbleCompletenessEvidence? Completeness = null);
+    BubbleCompletenessEvidence? Completeness = null, SemanticEdgeEvidence? SemanticEdge = null,
+    SemanticRegionEvidence? SemanticRegion = null);
 
 public sealed class ConversationChangedEventArgs(
     ConversationEpoch? previousEpoch,

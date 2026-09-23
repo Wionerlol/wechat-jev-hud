@@ -9,10 +9,24 @@ namespace WeChatJevHud.Observer.Tests;
 
 public sealed class MessageObserverTests
 {
+    [Fact]
+    public async Task Region_evidence_reaches_ocr_and_ambiguous_current_region_cannot_be_semantic_ready()
+    {
+        var bubble = new DetectedBubble(new(20, 70, 130, 70), MessageSide.Remote, .94);
+        var ocr = new StubOcrEngine(Ocr("complete main text"));
+        var observer = CreateObserver(new StubBubbleDetector([bubble], [bubble]), ocr);
+        await observer.ObserveAsync(Frame(10, [(bubble.Bounds, (byte)120)]), default);
+        Assert.Equal(new OcrInputEvidence(true, true, true), ocr.LastCrop!.SemanticEvidence);
+        Assert.True(Assert.Single(observer.State.Messages).IsTrustedForSemantics);
+        await observer.ObserveAsync(Frame(10, [(bubble.Bounds, (byte)120), (new CapturePixelRect(30, 104, 105, 23), (byte)80)]), default);
+        Assert.All(observer.State.Messages.Where(m => m.IsVisible), m => Assert.False(m.IsTrustedForSemantics));
+    }
+
     [Theory]
     [InlineData(54)]
     [InlineData(111)]
-    public async Task Complete_rounded_bottom_bubble_with_two_pixel_gap_still_emits_new(int height)
+    [InlineData(26)]
+    public async Task Semantic_edge_guard_rejects_two_pixel_gap_even_when_caps_look_complete(int height)
     {
         var roi = new CapturePixelRect(377, 120, 771, 421);
         var anchor = new DetectedBubble(new(500, 250, 150, 54), MessageSide.Self, .94);
@@ -23,10 +37,12 @@ public sealed class MessageObserverTests
             chatRegionLocator: new SequencedChatRegionLocator(roi));
         await observer.ObserveAsync(BubbleCompletenessTests.Shapes(roi, (anchor.Bounds, 5)), default);
         var result = await observer.ObserveAsync(BubbleCompletenessTests.Shapes(roi, (anchor.Bounds, 5), (appended.Bounds, 5)), default);
-        var message = Assert.Single(result.NewMessages);
-        Assert.True(message.IsFullyVisible);
-        Assert.Equal("complete new text", message.RawText);
-        Assert.Equal(2, ocr.Calls);
+        Assert.Empty(result.NewMessages);
+        var message = observer.State.Messages.Single(m => m.BubbleRect == appended.Bounds);
+        Assert.False(message.IsTrustedForSemantics);
+        Assert.False(message.HasCompleteText);
+        Assert.Empty(message.RawText);
+        Assert.Equal(1, ocr.Calls);
     }
 
     [Theory]
@@ -2036,9 +2052,11 @@ public sealed class MessageObserverTests
         public string Name => "stub";
 
         public int Calls { get; private set; }
+        public ImageCrop? LastCrop { get; private set; }
 
         public Task<OcrResult> RecognizeAsync(ImageCrop crop, CancellationToken cancellationToken)
         {
+            LastCrop = crop;
             var index = Math.Min(Calls, results.Length - 1);
             Calls++;
             return Task.FromResult(results[index]);
