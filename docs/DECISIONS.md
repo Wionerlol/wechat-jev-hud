@@ -929,3 +929,32 @@ real API with synthetic Chinese and failure/stale isolation with deterministic f
 not a fresh live-WeChat-to-Jev manual run or universal semantic correctness. CJK
 accuracy limitations, bounded queue skips, alias movement, omitted unverified quotes
 and inherited V0 OCR risk remain explicit. Phase 6 is not implemented.
+
+## D-033 — Phase 6 separates spatial presentation from frozen perception/semantics
+
+Phase 6 is authorized after Phase 5 merged. Overlay consumes typed in-memory
+results; no console parsing, question changes or model thresholds. Four deterministic
+rows retain selected Choice probability, Noul yes probabilities, and weighted Score.
+Chinese labels are code-owned. Optional debug controller retains all eight judgments.
+
+One transparent WPF host uses NOACTIVATE/TRANSPARENT/TOOLWINDOW, no taskbar entry,
+physical SetWindowPos with no activation and current-monitor DPI-local content.
+A latest-wins mailbox separates UI updates from background perception. Native foreground,
+visibility/bounds/DPI checks hide stale scenes independently of OCR/network latency.
+
+Cards exist only after successful queueing of trusted Remote LiveNew. Epoch+ID binds
+Pending/Ready results, not latest bubble position. Two changed observations missing a
+target retire it permanently; foreground/minimize/layout/pending identity only hide.
+Confirmed epoch changes clear old items. Retired history cannot resurrect semantic
+cards through best-effort historical ID reassociation. Placement avoids source/other
+bubbles and cards; impossible placements hide rather than cover unrelated desktop.
+
+Capture safety is fail-closed: each runtime HWND/monitor/DPI configuration requires a native
+visible-marker positive-control audit and a marker-free RenderWindow sample before
+perception begins. The same audit tests desktop capture exclusion, but desktop fallback
+frames are always discarded in HUD mode regardless of API success. No image removal
+heuristics or saved frames. WDA_EXCLUDEFROMCAPTURE is defense-in-depth, not proof by itself.
+
+Only production object construction was extracted to Runtime for App/Diagnostics;
+Observer, OCR, detector, trust, identity and TypeSafe implementations are unchanged.
+Phase 6 manual gates remain open; no PASS based on deterministic tests or Demo alone.

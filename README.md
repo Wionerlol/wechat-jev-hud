@@ -2,7 +2,15 @@
 
 This checkout implements accepted Phases 0–4 and **Phase 4.5 PASS for V0** production
 OCR runtime and **Phase 5 PASS** Jev integration (automated gates plus real synthetic
-Chinese TypeSafe smoke). The Phase 6 HUD is not implemented.
+Chinese TypeSafe smoke). **Phase 6 HUD is IN PROGRESS**: implementation and automated
+Windows tests are available; real capture-exclusion, dual-DPI and Remote-to-HUD
+manual acceptance remain required. Do not treat Demo as end-to-end acceptance.
+
+Phase 6: [HUD architecture and manual test workflow](docs/PHASE6_HUD.md).
+Run `.\scripts\hud.ps1 -Demo` for synthetic cards (no OCR/API),
+`.\scripts\hud.ps1 -CaptureAudit` for a no-persistence capture-exclusion probe,
+or `.\scripts\hud.ps1 -Jev -HudDebug` to explicitly enable trusted-text uploads
+and the real HUD. Keep WeChat foreground. The controller's Stop button exits cleanly.
 
 Phase 5: [API contract, architecture, tests and setup](docs/PHASE5_JEV.md).
 Run `.\scripts\jev-smoke.ps1` for six non-sensitive Chinese examples after configuring
@@ -61,7 +69,9 @@ dotnet run --project src/WeChatJevHud.Diagnostics -- `
 This explicitly exports two title-region PNGs and structured distances for visual
 inspection. Do not commit them. A same-title comparison alone is not switch acceptance.
 
-- `WeChatJevHud.App`: WPF diagnostic UI that refreshes HWND/process/title/class, desktop bounds, monitor, and DPI every 500 ms. Its button saves and previews one frame only when explicitly pressed.
+- `WeChatJevHud.App`: Phase 6 HUD/controller runtime; original manual capture UI remains available via `--capture-debug`.
+- `WeChatJevHud.Overlay`: pure composition/layout/lifecycle plus one no-activate WPF host.
+- `WeChatJevHud.Runtime`: shared unchanged perception construction used by App and Diagnostics.
 - `WeChatJevHud.Diagnostics`: command-line window diagnostics, explicit capture, offline fixture detection, and capture-plus-detection.
 - `WeChatJevHud.Vision`: capture-relative chat ROI location, `Remote`/`Self`/`Unknown` text-bubble detection, heuristic detection scores, timing, and annotated debug rendering.
 - Replaceable interfaces for window tracking, capture, bubble detection, OCR, Jev, and overlay rendering.

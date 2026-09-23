@@ -1,11 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <UseWPF>true</UseWPF>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\WeChatJevHud.Runtime\WeChatJevHud.Runtime.csproj" />
+    <ProjectReference Include="..\WeChatJevHud.Overlay\WeChatJevHud.Overlay.csproj" />
     <ProjectReference Include="..\WeChatJevHud.Windows\WeChatJevHud.Windows.csproj" />
     <ProjectReference Include="..\WeChatJevHud.Capture\WeChatJevHud.Capture.csproj" />
   </ItemGroup>
