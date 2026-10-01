@@ -865,12 +865,17 @@ Avoid turning several weak signals into a strong psychological claim.
 
 ## 14. Overlay/HUD
 
-Current implementation/acceptance contract: [PHASE6_HUD.md](PHASE6_HUD.md), D-033.
+Current implementation/acceptance contract: [PHASE6_HUD.md](PHASE6_HUD.md), D-037.
 One transparent WPF HWND, a shared semantic rail and small per-message anchors, local DIP layout,
-physical desktop SetWindowPos, epoch+message identity, two-changed-observation
-disappearance grace and permanent retirement on scroll-out. Temporarily hidden
-foreground/minimize/layout/pending-identity states do not retire items. No historical
-resurrection, no text/default screenshot persistence. Phase 6 is not yet PASS.
+physical desktop SetWindowPos and epoch+message identity. Semantic items survive
+viewport absence as OffscreenRetained with no anchor. Exact same-epoch logical-ID
+return restores geometry; different-ID history never inherits semantic results.
+DisplayOrdinal is assigned once at scheduling, monotonically within the epoch,
+reset on confirmed epoch change. Default HUD-only capacity 25 evicts oldest sequence;
+epoch change, reset and shutdown clear retained state. Observer's bounded buffer and
+later current-view trust do not control accepted semantic-result lifetime. Scheduling
+eligibility remains unchanged. Temporary foreground/minimize/layout/pending-identity
+states hide the whole scene without retirement. No persistence. Phase 6 is not yet PASS.
 
 ### Window behavior
 

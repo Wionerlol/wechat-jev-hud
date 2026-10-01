@@ -918,9 +918,10 @@ Detailed architecture, commands and evidence: [PHASE6_HUD.md](PHASE6_HUD.md), D-
 - [ ] Human click-through verification (native hit-test checks passed).
 - [x] Demo move/resize/150%↔100% DPI verification; automatic recovery without restart.
 - [ ] Real Remote → trusted OCR → Jev → Pending/Ready HUD with exact association.
-- [ ] Scroll-out retirement/no resurrection, A→B→A, minimize/restore matrix.
+- [ ] Retained semantic session: push-out / scroll-out / exact-ID scroll-back / stable numbering (D-037).
+- [ ] A→B→A, minimize/restore matrix.
 - [ ] Live per-stage and total latency recorded.
-- [x] Full Windows format/build/test gates recorded for D-036: 338 .NET tests passed,
+- [x] Full Windows format/build/test gates recorded for D-037: 348 .NET tests passed,
   zero failures/skips; build zero warnings/errors.
 
 Historical: 36 focused Windows Overlay tests passed, including capture-audit lifecycle and
@@ -957,6 +958,24 @@ Phase 6 remains IN PROGRESS and PR #7 Draft.
 D-036 automated evidence: 46 Overlay tests plus 292 unchanged-module tests passed
 on native Windows; format verification and full build passed (zero warnings/errors).
 This is not real rail visual acceptance.
+
+D-036 real rail evidence: user confirmed newest Expanded and previous Compact;
+redacted native 96-DPI log verifies m11/m12 distinct keys, one NEW and accepted HUD
+schedule each, Success→Apply→Ready, zero Adaptive fallback. Ready latency samples
+981/642 ms; m12 shows its own request judgment rather than stale m11 question values.
+Rapid-message presentation was subsequently reported working. D-037 now supersedes
+the earlier no-resurrection gate, not frozen Observer identity or capture safety.
+
+D-037 required manual gate: early items pushed above viewport remain retained;
+scroll newest items below viewport preserves latest rail item as `屏外`; exact-ID
+scroll-back restores original anchor numbers with zero Jev requests. Different-ID
+historical associations must never inherit results. Capacity/epoch/reset retire only.
+Do not claim this real gate passed based on automated tests.
+
+D-037 native Windows gates: format + verify passed; full build zero warnings/errors;
+348 .NET tests passed, zero failures/skips (Overlay 56, other suites 292). Two new
+behavioral regressions failed on the prior implementation before the fix. No OCR,
+Jev, Observer, identity or capture-safety algorithm changed. Manual gate still pending.
 
 ### Goal
 

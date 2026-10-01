@@ -1006,6 +1006,8 @@ still require hiding unsafe cards. Manual visual acceptance remains outstanding.
 
 ## D-036 — Bubble anchors and shared density-aware semantic rail
 
+Lifecycle/ordinal portions are superseded by D-037; rail geometry and numeric mappings remain.
+
 The user rejects further collision-tolerance tuning: consecutive short messages cannot
 each own a large adjacent detail card. Separate a 20 DIP keyed bubble-local anchor
 from one shared rail inside the usable chat ROI. Independent epoch/message results
@@ -1031,3 +1033,37 @@ safety rules. Tests cover one/two/three/five targets, narrow degradation, real s
 tail geometry, DPI, exact numeric mappings, movement, reverse completion order and
 retirement. Manual two-message and three/five rapid-message presentation gates remain
 pending; do not proceed to the lifecycle matrix or mark Phase 6 PASS before them.
+
+## D-037 — Semantic HUD lifetime is independent of bubble visibility
+
+The user explicitly supersedes D-033/D-036's HUD-only scroll-out retirement /
+no-resurrection rule. A scheduled target belongs to an in-memory semantic session,
+not to a viewport. Absence sets OffscreenRetained, clears current anchor geometry,
+and retains presentation/result, sequence, last known bounds and display ordinal.
+The rail still prioritizes the newest tracked target and labels offscreen entries
+`屏外`; no inferred direction. Only exact same logical ID in the same epoch restores
+an anchor. Different-ID ambiguous history never inherits a result. This does not
+strengthen or change Phase 4.5's best-effort Observer identity guarantees.
+
+Assign ordinal once on successful HUD scheduling, chronological 1..N per epoch;
+layout copies it instead of deriving it from newest-first array position. Pending
+results may complete offscreen. Visibility, overflow, resize and result order do not
+renumber or rerun Jev. Trusted eligibility remains mandatory at scheduling, but
+display of an accepted result is independent of Observer State.Messages membership
+or its later current-view trust evidence; no uncertain text is newly submitted.
+
+Default MaxTrackedSemanticItems=25, configurable through HudLifecycle and
+`hud.ps1 -MaxTrackedSemanticItems`. Oldest sequence is evicted deterministically;
+late evicted results cannot recreate items. Epoch switch, explicit reset and shutdown
+clear the session; ordinal resets. Unavailable analyses stay bounded/hidden, without
+fabricated rows. The existing 2048-key per-epoch schedule dedupe cap remains; capacity
+eviction never permits rescheduling an old used ID. Diagnostic timing keys are pruned
+with eviction. No persistence, interaction or changes to frozen perception/Jev/capture.
+
+Old-code regressions were red for disappearance retention and chronological numbering;
+new tests cover push-out, scroll below/return, different-ID rejection, offscreen
+completion, capacity, overflow and epoch/reset. Real two-message D-036 run on 96 DPI
+rendered m11 Compact and newer m12 Expanded, each one NEW/schedule/Success, zero
+Adaptive fallback; observed capture-start-to-Ready 981/642 ms. User confirmed shape
+and rapid-message presentation. D-037 push-out/scroll/stable-number manual gate remains
+pending; Phase 6 remains IN PROGRESS, PR #7 Draft.

@@ -31,7 +31,11 @@ public sealed class HudRuntimeCoordinator(WpfOverlayPresenter presenter, string[
         var debug = args.Contains("--hud-debug");
         void Trace(HudTrace entry) => _traceDiagnostics.Enqueue(entry);
         Action<HudTrace>? trace = debug ? Trace : null;
-        _hud = new(trace: trace);
+        var capacityText = Value("--max-tracked-semantic-items");
+        var capacity = 25;
+        if (capacityText is not null && (!int.TryParse(capacityText, out capacity) || capacity < 1))
+        { status("Invalid MaxTrackedSemanticItems; runtime not started."); return; }
+        _hud = new(maxTrackedSemanticItems: capacity, trace: trace);
         presenter.Trace = trace;
         var auditOnly = args.Contains("--capture-audit");
         var upload = args.Contains("--jev") && !demo && !auditOnly;
@@ -218,7 +222,13 @@ public sealed class HudRuntimeCoordinator(WpfOverlayPresenter presenter, string[
                             }
                         }
                         var layout = Stopwatch.StartNew();
-                        var eligibleIds = state.Messages.Where(m => m.IsTrustedForSemantics).Select(m => m.Id).ToHashSet();
+                        var retainedKeys = _hud.ActiveKeys.ToHashSet();
+                        foreach (var key in _appearance.Keys.Where(k => !retainedKeys.Contains(k)))
+                        {
+                            _appearance.TryRemove(key, out _);
+                            _readyLogged.TryRemove(key, out _);
+                            _pendingLogged.TryRemove(key, out _);
+                        }
                         var lifecycleCards = _hud.Cards;
                         foreach (var key in debug ? _hud.ActiveKeys : [])
                         {
@@ -231,10 +241,12 @@ public sealed class HudRuntimeCoordinator(WpfOverlayPresenter presenter, string[
                                 current_message_found = current is not null,
                                 current_semantic_ready = current?.IsTrustedForSemantics ?? false,
                                 visible_snapshot_found = state.VisibleMessages.Any(v => v.LogicalMessageId == key.MessageId),
-                                passed_to_layout = hasCard && eligibleIds.Contains(key.MessageId)
+                                passed_to_layout = hasCard,
+                                trust_gate_scope = "analysis_scheduling_only",
+                                visibility = lifecycleCards.FirstOrDefault(c => c.Key == key)?.Visibility.ToString()
                             }));
                         }
-                        var cards = _layout.Layout(lifecycleCards.Where(c => eligibleIds.Contains(c.Key.MessageId)), roi, w.Dpi, state.VisibleMessages.Select(v => v.BubbleRect).ToArray(), trace);
+                        var cards = _layout.Layout(lifecycleCards, roi, w.Dpi, state.VisibleMessages.Select(v => v.BubbleRect).ToArray(), trace);
                         var layoutMs = layout.Elapsed.TotalMilliseconds;
                         presenter.Present(hidden ? OverlayScene.Hidden : new(w, cards));
                         if (debug)

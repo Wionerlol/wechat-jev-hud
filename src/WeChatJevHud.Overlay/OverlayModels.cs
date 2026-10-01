@@ -21,11 +21,19 @@ public sealed record HudPresentationModel(string Heading, ImmutableArray<HudRow>
 {
     public static HudPresentationModel Pending { get; } = new("Jev · 分析中…", []);
 }
-public sealed record HudCard(HudKey Key, CapturePixelRect Bubble, HudPresentationModel Presentation, long Sequence);
+public enum HudVisibilityState { Onscreen, OffscreenRetained }
+/// <summary>Bubble retains last known geometry; only CurrentBubbleRect may produce an anchor.</summary>
+public sealed record HudCard(HudKey Key, CapturePixelRect Bubble, HudPresentationModel Presentation, long Sequence,
+    HudVisibilityState Visibility = HudVisibilityState.Onscreen, bool IsUnavailable = false)
+{
+    public int DisplayOrdinal => checked((int)Sequence);
+    public CapturePixelRect? CurrentBubbleRect => Visibility == HudVisibilityState.Onscreen ? Bubble : null;
+    public CapturePixelRect LastKnownBubbleRect => Bubble;
+}
 public enum HudPresentationLevel { Expanded, Compact }
 public enum HudRailDensity { Empty, Expanded, Compact, Indicator, AnchorsOnly }
 public sealed record PositionedHudCard(HudKey Key, LocalDipRect Bounds, HudPresentationModel Presentation,
-    HudPresentationLevel Level, int Ordinal);
+    HudPresentationLevel Level, int Ordinal, HudVisibilityState Visibility = HudVisibilityState.Onscreen);
 public sealed record BubbleAnchor(HudKey Key, LocalDipRect Bounds, int Ordinal);
 public sealed record HudOverflowIndicator(LocalDipRect Bounds, int Count, HudKey LatestKey, bool IncludesLatest);
 public sealed record HudRailLayout(HudRailDensity Density, LocalDipRect? RailBounds,

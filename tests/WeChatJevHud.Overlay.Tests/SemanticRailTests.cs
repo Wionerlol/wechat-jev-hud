@@ -143,7 +143,7 @@ public sealed class SemanticRailTests
     }
 
     [Fact]
-    public void RailNeverResurrectsRetiredHistoryAndTemporaryHidingDoesNotRetire()
+    public void RailRetainsOffscreenHistoryAndTemporaryHidingDoesNotRetire()
     {
         var hud = new HudLifecycle();
         hud.Observe(1, [LifecycleTests.Visible("a")], true, false);
@@ -158,7 +158,8 @@ public sealed class SemanticRailTests
         hud.Observe(1, [], true, false);
         hud.Observe(1, [LifecycleTests.Visible("a")], true, false);
         Assert.False(hud.Schedule(LifecycleTests.Message(), TypeSafe.JevStatus.Queued));
-        Assert.False(hud.Apply(LifecycleTests.Result()));
-        Assert.True(Layout(hud.Cards.ToArray()).IsEmpty);
+        Assert.True(hud.Apply(LifecycleTests.Result()));
+        Assert.Single(Layout(hud.Cards.ToArray()).Items);
+        Assert.Single(Layout(hud.Cards.ToArray()).Anchors);
     }
 }

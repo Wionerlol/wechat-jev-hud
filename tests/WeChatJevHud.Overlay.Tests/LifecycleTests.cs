@@ -25,7 +25,7 @@ public class LifecycleTests
             new(status, judgments), 0, 10, false, 0, 0, 0);
     }
     [Fact]
-    public void QueuedRemoteBecomesReadyMovesThenRetiresWithoutResurrection()
+    public void QueuedRemoteBecomesReadyMovesThenRetainsOffscreenAndReattaches()
     {
         var hud = new HudLifecycle();
         hud.Observe(1, [Visible()], true, false);
@@ -36,14 +36,15 @@ public class LifecycleTests
         Assert.Equal(50, Assert.Single(hud.Cards).Bubble.Y);
         hud.Observe(1, [], true, false);
         Assert.Single(hud.Cards);
-        Assert.False(hud.Apply(Result())); // Late result has no current visible target.
+        Assert.True(hud.Apply(Result())); // Same-key results remain valid offscreen.
         hud.Observe(1, [], false, false);
-        Assert.Empty(hud.Cards); // Static missing view hides the grace anchor, not a persistent ghost.
+        Assert.Null(Assert.Single(hud.Cards).CurrentBubbleRect);
         hud.Observe(1, [], true, false);
-        Assert.Empty(hud.Cards);
+        Assert.Equal(HudVisibilityState.OffscreenRetained, Assert.Single(hud.Cards).Visibility);
         hud.Observe(1, [Visible()], true, false);
         Assert.False(hud.Schedule(Message(), JevStatus.Queued));
-        Assert.False(hud.Apply(Result()));
+        Assert.True(hud.Apply(Result()));
+        Assert.Equal(HudVisibilityState.Onscreen, Assert.Single(hud.Cards).Visibility);
     }
     [Fact]
     public void TemporaryHidingDoesNotRetireButEpochSwitchClears()
@@ -61,11 +62,11 @@ public class LifecycleTests
     }
 
     [Fact]
-    public void OneMissThenUnchangedViewHidesWithoutRetiringAndCanRecover()
+    public void MissingAndUnchangedViewRetainSemanticRailWithoutGhostAnchor()
     {
         var hud = new HudLifecycle(); hud.Observe(1, [Visible()], true, false); hud.Schedule(Message(), JevStatus.Queued);
         hud.Apply(Result()); hud.Observe(1, [], true, false); Assert.Single(hud.Cards);
-        hud.Observe(1, [], false, false); Assert.Empty(hud.Cards);
+        hud.Observe(1, [], false, false); Assert.Null(Assert.Single(hud.Cards).CurrentBubbleRect);
         hud.Observe(1, [Visible(y: 80)], true, false);
         Assert.Equal("Jev", Assert.Single(hud.Cards).Presentation.Heading);
     }

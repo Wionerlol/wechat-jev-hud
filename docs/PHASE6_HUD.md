@@ -44,12 +44,13 @@ It does not show source message text. Normal mode hides failed analyses silently
 ## Shared semantic rail (current; D-036)
 
 Each active target retains its own epoch+message ID, result and 20 DIP bubble-local
-anchor. A neutral numbered marker links it to the same ordinal in the rail (1 is
-newest). Markers use a 4 DIP gap to the bubble, follow its bounds, and must stay in
+anchor when onscreen. A neutral numbered marker links it to a stable chronological
+ordinal in the rail (newest has the highest number within this epoch). Markers use
+a 4 DIP gap to the bubble, follow its bounds, and must stay in
 the ROI without covering any bubble or another marker. If neither side safely fits
 a marker, that marker is omitted with the target still represented in rail metadata.
 
-Default policy: newest visible Pending/Ready item Expanded; up to two previous active
+Default policy: newest tracked Pending/Ready item Expanded (even offscreen); up to two previous active
 items Compact; remaining items represented by a `+N` footer. Capacity is configured
 through `HudPresentationPolicyOptions`, independently of geometry. Selection is by
 creation sequence, never Y or API completion order. A late older result cannot displace
@@ -123,23 +124,35 @@ Keys are epoch + logical message ID. Successful same-key results compose Ready;
 failures hide without fabricated rows. Self, History and Bootstrap never create cards.
 Multiple requests/results retain individual keys, not a mutable latest-message slot.
 
-Each healthy stable observation updates anchors. A single missing changed observation
-retains the card as a grace; two consecutive changed observations retire it. Unchanged
-frames do not advance that counter. If the first missing view stays static, its next
-unchanged observation hides the grace anchor (without advancing retirement), avoiding
-an indefinitely floating ghost while waiting for another changed observation.
-A retired key cannot be recreated on history
-rediscovery. This intentionally does not treat best-effort old historical association
-as a guarantee. No new Jev calls are made by scroll or layout.
+Each healthy stable observation updates exact-ID anchors. Absence immediately sets
+OffscreenRetained and clears CurrentBubbleRect, retaining LastKnownBubbleRect,
+presentation/result, sequence and DisplayOrdinal. The rail shows `屏外`; it does not
+invent above/below direction. Exact same-epoch logical-ID return restores the anchor
+and its original ordinal. Different IDs never inherit results, even with identical
+text/geometry. No Jev replay. This supersedes the earlier scroll-out retirement /
+no-resurrection rule (D-037); Observer's historical identity remains best-effort.
+
+Ordinals are chronological at successful scheduling, never presentation-list indices;
+newest-first rail may read 5 Expanded, 4/3 Compact, +2. Default capacity is 25 semantic
+items; `hud.ps1 -MaxTrackedSemanticItems 20` changes it. Oldest sequence is evicted
+deterministically, without renumbering survivors; late results for evicted items are
+ignored. Only eviction, confirmed epoch change, reset or shutdown retire items.
+Unavailable analyses are retained but hidden. No Observer buffer is used as HUD history.
 
 Foreground loss, minimize, unavailable capture, pending identity and layout transitions
 hide without counting disappearance. Header/chat pixel changes provisionally hide
 before waiting for Observer/OCR to resolve identity. Confirmed epoch change clears
-all old cards immediately on receipt. Current untrusted/partial semantic evidence
-hides rows without modifying Observer text/trust. Late results lacking a current
-visible active key cannot render. No persisted cards or semantic profile.
+all old items immediately and resets numbering. Scheduling still requires all frozen
+semantic hard gates. Once accepted, an item's rail/result lifetime is independent of
+later Observer-buffer membership/current-view trust. A same-key result may complete
+offscreen; stale/evicted/unknown keys are rejected. No persisted cards or profile.
 
 ## Recursive capture protection
+
+D-037 automated validation: native Windows format/verify/full build passed, zero
+warnings/errors; all 348 .NET tests passed (56 Overlay), zero failures/skips. Retention
+and chronological-ordinal regressions were red on old code. Real push-out/scroll-back
+and stable-number evidence remains pending. No capture or semantic pipeline changes.
 
 `WDA_EXCLUDEFROMCAPTURE` is requested on the host. **API success is not acceptance.**
 Before processing real frames with HUD enabled, the runtime runs an in-memory audit:
@@ -264,7 +277,7 @@ Windows full build: zero warnings/errors; full .NET suite: 328 passed, zero
 failed/skipped. Final diagnostic-field update was additionally checked with all
 36 Overlay tests. Format passed; private replay files remain gitignored.
 
-`--hud-debug` traces target/schedule, active lifecycle visibility/missing counts,
+`--hud-debug` traces target/schedule, retained lifecycle visibility/stable ordinals,
 Apply result/reason, current semantic display gate, each layout input/output and
 rejection counts, scene generation/submission, Tick actions and rebuilt Canvas
 rows. UI traces are queued for background serialization; no source chat text or
@@ -283,8 +296,9 @@ until those presentation gates pass.
 3. Alt-Tab away/back, minimize/restore: no floating unrelated HUD; fresh anchoring.
 4. Real `-Jev`: Remote short message, question, two rapid Remote messages; confirm
    Pending → Ready on the exact IDs/bubbles. Then a Self message pushes them upward.
-5. Slight scroll follows; scroll fully out for two changed observations retires;
-   scroll back does not resurrect. A→B→A hides pending and clears confirmed epochs.
+5. Push early targets above viewport, scroll newest targets below, then scroll back:
+   retained rail entries show `屏外`, anchors disappear/restore only on exact IDs,
+   stable numbers never collapse to 1, and no Jev replay. A→B→A clears old epochs.
 6. Inspect redacted timing/result logs: no wrong association, no Self HUD, no replay,
    no capture contamination/focus theft. Record real latency and fallback counts.
 
@@ -299,8 +313,8 @@ TypeSafe skill and live index, Noul/Choice/Score, Confidence, State, API and par
 questions docs were consulted for field meanings; Phase 5 API/criteria remain frozen.
 See [Phase 5 sources](PHASE5_JEV.md#live-documentation-gate-2026-09-24).
 
-Retain all accepted V0 limitations: best-effort historical ID reassociation (no HUD
-resurrection), strict clipped-width append false negatives, residual OCR semantic risk,
+Retain all accepted V0 limitations: best-effort historical ID reassociation (exact-ID
+reattachment only, never different-ID guessing), strict clipped-width append false negatives, residual OCR semantic risk,
 limited quote separation, omitted unverified quoted context, uncalibrated display policy,
 probabilistic Jev rather than truth, small latency sample and bounded queue skips.
 No replies, auto-send, dynamic questions, long-term profiles or interaction automation.

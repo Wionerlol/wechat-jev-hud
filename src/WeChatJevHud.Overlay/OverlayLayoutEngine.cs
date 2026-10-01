@@ -36,13 +36,14 @@ public sealed class OverlayLayoutEngine
         for (var i = 0; i < plan.OrderedItems.Length; i++)
         {
             var card = plan.OrderedItems[i];
-            var bubble = OverlayCoordinateMapper.ToLocal(card.Bubble, dpi);
+            if (card.CurrentBubbleRect is not { } currentBubble) continue;
+            var bubble = OverlayCoordinateMapper.ToLocal(currentBubble, dpi);
             var y = bubble.Y + Math.Max(0, (bubble.Height - _options.AnchorSize) / 2);
             var choices = new[] { bubble.Right + _options.AnchorGap, bubble.X - _options.AnchorGap - _options.AnchorSize };
             var bounds = choices.Select(x => new LocalDipRect(x, y, _options.AnchorSize, _options.AnchorSize))
                 .Where(r => area.Contains(r) && !bubbles.Any(r.Intersects) && !anchors.Any(a => r.Intersects(a.Bounds)))
                 .Cast<LocalDipRect?>().FirstOrDefault();
-            if (bounds is { } safe) anchors.Add(new(card.Key, safe, i + 1));
+            if (bounds is { } safe) anchors.Add(new(card.Key, safe, card.DisplayOrdinal));
         }
 
         var inner = new LocalDipRect(area.X + _options.Margin, area.Y + _options.Margin,
@@ -84,6 +85,8 @@ public sealed class OverlayLayoutEngine
                 {
                     key = i.Key,
                     level = i.Level.ToString(),
+                    ordinal = i.Ordinal,
+                    visibility = i.Visibility.ToString(),
                     bounds = i.Bounds,
                     state = i.Presentation.Rows.IsEmpty ? "Pending" : "Ready"
                 }).ToArray(),
@@ -141,7 +144,7 @@ public sealed class OverlayLayoutEngine
             var height = i == 0 ? latestHeight : CompactHeight;
             var item = plan.OrderedItems[i];
             items.Add(new(item.Key, new(region.X, y, region.Width, height), item.Presentation,
-                i == 0 ? latestLevel : HudPresentationLevel.Compact, i + 1));
+                i == 0 ? latestLevel : HudPresentationLevel.Compact, item.DisplayOrdinal, item.Visibility));
             y += height + _options.Gap;
         }
         HudOverflowIndicator? overflow = fit.Overflow == 0 ? null : new(new(region.X, y, region.Width, IndicatorHeight), fit.Overflow, plan.OrderedItems[0].Key, false);

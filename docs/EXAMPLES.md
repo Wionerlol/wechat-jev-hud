@@ -270,6 +270,13 @@ indicator; an older result must never masquerade as the latest. Expanded retains
 eight judgments, with Scores displayed as `/3`, not percentages. This supersedes
 the earlier full-card-beside-every-bubble examples.
 
+D-037: targets scheduled as #1/#2/#3 keep those numbers when #1 scrolls above or #3
+below the viewport. Their rail entries remain (`屏外`), but no offscreen anchor is
+drawn. Exact same logical ID returning restores its original number, not a new Jev
+request. A visually similar different-ID historical bubble never inherits a result.
+The newest tracked target stays primary even when offscreen; 25 retained items can
+appear as #25 Expanded, #24/#23 Compact, +22. Epoch switch clears/reset numbers.
+
 See:
 
 `docs/assets/wechat-dark-layout-reference.png`

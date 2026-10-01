@@ -115,19 +115,20 @@ public sealed class WpfOverlayPresenter : IOverlayPresenter, IDisposable
         {
             var content = new StackPanel();
             var prefix = (scene.Demo ? "DEMO · " : "") + card.Ordinal + " · ";
+            var offscreen = card.Visibility == HudVisibilityState.OffscreenRetained ? " · 屏外" : "";
             if (card.Presentation.Rows.IsEmpty)
             {
-                content.Children.Add(Text(prefix + card.Presentation.Heading, 20));
+                content.Children.Add(Text(prefix + card.Presentation.Heading + offscreen, 20));
             }
             else if (card.Level == HudPresentationLevel.Compact)
             {
                 var rows = card.Presentation.Rows;
-                content.Children.Add(Text(prefix + rows[0].Label + " " + rows[0].Value, 18));
+                content.Children.Add(Text(prefix + rows[0].Label + " " + rows[0].Value + offscreen, 18));
                 if (rows.Length >= 3) content.Children.Add(Text("回应" + rows[1].Value + " · 前文" + rows[2].Value, 18));
             }
             else
             {
-                content.Children.Add(Text(prefix + "Jev · 最新", 22));
+                content.Children.Add(Text(prefix + "Jev · 最新" + offscreen, 22));
                 if (card.Presentation.Details.IsDefaultOrEmpty)
                     foreach (var row in card.Presentation.Rows) content.Children.Add(Row(row));
                 else foreach (var group in card.Presentation.Details)
@@ -166,6 +167,8 @@ public sealed class WpfOverlayPresenter : IOverlayPresenter, IDisposable
             {
                 key = c.Key,
                 level = c.Level.ToString(),
+                ordinal = c.Ordinal,
+                visibility = c.Visibility.ToString(),
                 bounds = c.Bounds,
                 rows = c.Presentation.Rows,
                 details = c.Presentation.Details.IsDefault ? null : (object)c.Presentation.Details

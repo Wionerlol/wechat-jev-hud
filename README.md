@@ -11,7 +11,11 @@ Phase 6: [HUD architecture and manual test workflow](docs/PHASE6_HUD.md).
 Current presentation is a shared semantic rail: newest target Expanded, two prior
 Compact items, overflow count, and small numbered anchors beside Remote bubbles.
 Narrow-window density degrades automatically; click-through/no-activate behavior is
-unchanged. The rail's two-message/rapid-message manual gate is still pending.
+unchanged. Semantic entries stay in a bounded in-memory HUD session when offscreen,
+with `屏外` and no anchor; exact same-epoch logical-ID return restores the original
+anchor number without rerunning Jev. Ordinals increase chronologically within the
+epoch, never renumber on scroll/layout. Default capacity 25 can be configured with
+`-MaxTrackedSemanticItems`. Real push-out/scroll/stable-number acceptance is pending.
 Run `.\scripts\hud.ps1 -Demo` for synthetic cards (no OCR/API),
 `.\scripts\hud.ps1 -CaptureAudit` for a no-persistence capture-exclusion probe,
 or `.\scripts\hud.ps1 -Jev -HudDebug` to explicitly enable trusted-text uploads
