@@ -918,7 +918,7 @@ Detailed architecture, commands and evidence: [PHASE6_HUD.md](PHASE6_HUD.md), D-
 - [ ] Human click-through verification (native hit-test checks passed).
 - [x] Demo move/resize/150%↔100% DPI verification; automatic recovery without restart.
 - [ ] Real Remote → trusted OCR → Jev → Pending/Ready HUD with exact association.
-- [ ] Retained semantic session: push-out / scroll-out / exact-ID scroll-back / stable numbering (D-037).
+- [x] Retained semantic session: push-out / scroll-out / exact-ID scroll-back / stable numbering (D-037).
 - [ ] A→B→A, minimize/restore matrix.
 - [ ] Live per-stage and total latency recorded.
 - [x] Full Windows format/build/test gates recorded for D-037: 348 .NET tests passed,
@@ -975,7 +975,16 @@ Do not claim this real gate passed based on automated tests.
 D-037 native Windows gates: format + verify passed; full build zero warnings/errors;
 348 .NET tests passed, zero failures/skips (Overlay 56, other suites 292). Two new
 behavioral regressions failed on the prior implementation before the fix. No OCR,
-Jev, Observer, identity or capture-safety algorithm changed. Manual gate still pending.
+Jev, Observer, identity or capture-safety algorithm changed.
+
+D-037 real manual gate PASS on `db897c8`, 2026-10-01, DISPLAY5/96 DPI. User reports
+no number reset/result disappearance. Log verifies 15 epoch-2 targets (ordinals 1..15),
+one accepted schedule / Success Apply / Ready render each, all exact keys transitioning
+Onscreen -> OffscreenRetained -> Onscreen without ordinal changes. Newest #15 remains
+Expanded while offscreen; returning anchors keep their numbers. Following the final
+send: 29 changed observations, zero NEW, epoch 2 unchanged, zero retirement events
+and zero Adaptive fallback. This passes only this presentation lifecycle gate, not
+all remaining Phase 6 acceptance. No raw chat text or screenshots exported.
 
 ### Goal
 

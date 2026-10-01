@@ -1065,5 +1065,15 @@ new tests cover push-out, scroll below/return, different-ID rejection, offscreen
 completion, capacity, overflow and epoch/reset. Real two-message D-036 run on 96 DPI
 rendered m11 Compact and newer m12 Expanded, each one NEW/schedule/Success, zero
 Adaptive fallback; observed capture-start-to-Ready 981/642 ms. User confirmed shape
-and rapid-message presentation. D-037 push-out/scroll/stable-number manual gate remains
-pending; Phase 6 remains IN PROGRESS, PR #7 Draft.
+and rapid-message presentation.
+
+D-037 manual gate passed on `db897c8`, 2026-10-01, DISPLAY5/96 DPI. The user
+completed push-out / scroll-away / scroll-back and confirmed no number reset or lost
+result. Redacted log contains 15 distinct targets in epoch 2 (ordinals 1..15), each
+one accepted HUD schedule and successful Apply/Ready render. All 15 transition
+Onscreen -> OffscreenRetained -> Onscreen with unchanged ordinal. Latest #15 also
+renders Expanded while offscreen. After the final send, 29 changed observations
+contain zero NEW and remain epoch 2; zero retirement events / Adaptive fallback.
+Returning anchors retain exact keys and numbers. No new research or lifecycle change
+is needed for this gate. Capacity eviction/different-ID rejection remain automated,
+not separately induced real-machine tests. Phase 6 remains IN PROGRESS, PR #7 Draft.

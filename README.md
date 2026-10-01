@@ -15,7 +15,8 @@ unchanged. Semantic entries stay in a bounded in-memory HUD session when offscre
 with `屏外` and no anchor; exact same-epoch logical-ID return restores the original
 anchor number without rerunning Jev. Ordinals increase chronologically within the
 epoch, never renumber on scroll/layout. Default capacity 25 can be configured with
-`-MaxTrackedSemanticItems`. Real push-out/scroll/stable-number acceptance is pending.
+`-MaxTrackedSemanticItems`. Real push-out/scroll-back/stable-number acceptance passed
+on `db897c8` (15 targets, no replay); remaining Phase 6 gates are still pending.
 Run `.\scripts\hud.ps1 -Demo` for synthetic cards (no OCR/API),
 `.\scripts\hud.ps1 -CaptureAudit` for a no-persistence capture-exclusion probe,
 or `.\scripts\hud.ps1 -Jev -HudDebug` to explicitly enable trusted-text uploads

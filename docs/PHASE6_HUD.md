@@ -152,7 +152,16 @@ offscreen; stale/evicted/unknown keys are rejected. No persisted cards or profil
 D-037 automated validation: native Windows format/verify/full build passed, zero
 warnings/errors; all 348 .NET tests passed (56 Overlay), zero failures/skips. Retention
 and chronological-ordinal regressions were red on old code. Real push-out/scroll-back
-and stable-number evidence remains pending. No capture or semantic pipeline changes.
+and chronological-number regressions passed after the fix. No capture or semantic
+pipeline changes.
+
+Real D-037 gate passed on `db897c8`, 2026-10-01, DISPLAY5/96 DPI. User confirms
+push-out/scroll-back without number reset or result disappearance. All 15 epoch-2
+targets preserve their single ordinals 1..15 through OffscreenRetained and exact-ID
+return; one accepted schedule and Success/Ready each. Latest #15 is rendered Expanded
+offscreen. After final send, 29 changed observations have zero NEW / epoch changes;
+no retirement or Adaptive fallback. Private redacted log stays gitignored. This is
+not full Phase 6 PASS; capacity and different-ID rejection are automated evidence.
 
 `WDA_EXCLUDEFROMCAPTURE` is requested on the host. **API success is not acceptance.**
 Before processing real frames with HUD enabled, the runtime runs an in-memory audit:
