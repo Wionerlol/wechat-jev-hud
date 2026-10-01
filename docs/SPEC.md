@@ -903,7 +903,9 @@ The current WeChat layout has substantial empty space to the right of remote bub
 
 ### Collapsed view
 
-Four fixed rows:
+Four fixed judgments, arranged row-major in a compact two-column/two-row card
+(default 300 × 64 DIPs; pending 300 × 48 DIPs). Display order and numerical
+semantics remain unchanged; only the visual arrangement changes (D-035):
 
 ```text
 询问            88%

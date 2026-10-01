@@ -25,7 +25,7 @@ public class LayoutTests
     {
         HudCard[] cards = [new(new(1, "a"), new(600, 50, 100, 40), HudPresentationModel.Pending, 1)];
         var engine = new OverlayLayoutEngine();
-        Assert.Equal(380, Assert.Single(engine.Layout(cards, new(0, 0, 720, 600), new(96, 96), [cards[0].Bubble])).Bounds.X);
+        Assert.Equal(290, Assert.Single(engine.Layout(cards, new(0, 0, 720, 600), new(96, 96), [cards[0].Bubble])).Bounds.X);
         Assert.Empty(engine.Layout(cards, new(600, 50, 100, 40), new(96, 96), [cards[0].Bubble]));
     }
 

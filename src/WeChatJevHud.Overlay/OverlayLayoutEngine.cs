@@ -4,7 +4,7 @@ using WeChatJevHud.Core.Windows;
 
 namespace WeChatJevHud.Overlay;
 
-public sealed record OverlayLayoutOptions(int MaxVisibleCards = 3, double CardWidth = 210, double Gap = 10,
+public sealed record OverlayLayoutOptions(int MaxVisibleCards = 3, double CardWidth = 300, double Gap = 10,
     double MaxVerticalShift = 96, double MaxHorizontalShift = 20);
 
 public sealed class OverlayLayoutEngine
@@ -38,7 +38,7 @@ public sealed class OverlayLayoutEngine
         foreach (var card in ordered.Take(_options.MaxVisibleCards))
         {
             var bubble = OverlayCoordinateMapper.ToLocal(card.Bubble, dpi);
-            var height = 48 + card.Presentation.Rows.Length * 22;
+            var height = card.Presentation.Rows.IsEmpty ? 48 : 20 + Math.Ceiling(card.Presentation.Rows.Length / 2d) * 22;
             var preferredRight = bubble.Right + _options.Gap;
             // A shorter new bubble's card may need to clear a slightly wider preceding bubble
             // when shifted upward. Keep the alternate nearby and in DIPs; collision checks still apply.

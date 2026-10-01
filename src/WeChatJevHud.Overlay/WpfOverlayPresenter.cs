@@ -106,26 +106,37 @@ public sealed class WpfOverlayPresenter : IOverlayPresenter, IDisposable
         _canvas.Children.Clear();
         foreach (var card in scene.Cards)
         {
-            var content = new StackPanel();
-            content.Children.Add(new TextBlock
+            var content = new Grid();
+            content.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
+            content.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
+            if (card.Presentation.Rows.IsEmpty)
             {
-                Text = (scene.Demo ? "DEMO · " : "") + card.Presentation.Heading,
-                Foreground = new SolidColorBrush(Color.FromRgb(160, 169, 178)),
-                FontSize = 12,
-                Margin = new(0, 0, 0, 6)
-            });
-            foreach (var row in card.Presentation.Rows)
+                var heading = new TextBlock
+                {
+                    Text = (scene.Demo ? "DEMO · " : "") + card.Presentation.Heading,
+                    Foreground = new SolidColorBrush(Color.FromRgb(160, 169, 178)),
+                    FontSize = 12,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                Grid.SetColumnSpan(heading, 2);
+                content.Children.Add(heading);
+            }
+            for (var index = 0; index < card.Presentation.Rows.Length; index++)
             {
-                var grid = new Grid { Height = 22 };
-                grid.Children.Add(new TextBlock { Text = row.Label, Foreground = Brushes.Gainsboro, FontSize = 13 });
+                if (index % 2 == 0) content.RowDefinitions.Add(new() { Height = new(22) });
+                var row = card.Presentation.Rows[index];
+                var grid = new Grid { Height = 22, Margin = index % 2 == 0 ? new(0, 0, 10, 0) : new(10, 0, 0, 0) };
+                grid.Children.Add(new TextBlock { Text = (scene.Demo && index == 0 ? "DEMO · " : "") + row.Label, Foreground = Brushes.Gainsboro, FontSize = 12 });
                 grid.Children.Add(new TextBlock { Text = row.Value, Foreground = Brushes.Gainsboro, FontSize = 13, HorizontalAlignment = HorizontalAlignment.Right });
+                Grid.SetRow(grid, index / 2);
+                Grid.SetColumn(grid, index % 2);
                 content.Children.Add(grid);
             }
             var border = new Border
             {
                 Width = card.Bounds.Width,
                 Height = card.Bounds.Height,
-                Padding = new(11),
+                Padding = new(9),
                 Background = new SolidColorBrush(Color.FromArgb(240, 30, 33, 37)),
                 BorderBrush = new SolidColorBrush(Color.FromRgb(66, 72, 80)),
                 BorderThickness = new(1),

@@ -8,6 +8,24 @@ namespace WeChatJevHud.Overlay.Tests;
 
 public sealed class TwoMessageRegressionTests
 {
+    [Theory]
+    [InlineData(96)]
+    [InlineData(144)]
+    public void CompactCardClearsWiderPreviousBubbleForRealShortLatestMessage(uint dpi)
+    {
+        CapturePixelRect Scale(CapturePixelRect r) => new((int)(r.X * dpi / 96d), (int)(r.Y * dpi / 96d),
+            (int)(r.Width * dpi / 96d), (int)(r.Height * dpi / 96d));
+        var older = Scale(new(316, 482, 225, 36));
+        var newer = Scale(new(316, 538, 57, 36));
+        var presentation = new JudgmentComposer().Compose(Result("m20", "acknowledgement", .52))!;
+        HudCard[] cards = [new(new(1, "m19"), older, presentation, 1), new(new(1, "m20"), newer, presentation, 2)];
+        var output = new OverlayLayoutEngine().Layout(cards, Scale(new(251, 80, 649, 508)), new(dpi, dpi), [older, newer]);
+        var latest = Assert.Single(output.Where(c => c.Key.MessageId == "m20"));
+        Assert.Equal(64, latest.Bounds.Height);
+        Assert.All(output, card => Assert.False(card.Bounds.Intersects(OverlayCoordinateMapper.ToLocal(older, new(dpi, dpi)))));
+        Assert.All(output, card => Assert.False(card.Bounds.Intersects(OverlayCoordinateMapper.ToLocal(newer, new(dpi, dpi)))));
+    }
+
     // Real no-image geometry replay: 96 DPI, two adjacent Remote bubble widths 127/113.
     // The newer card at x=439 overlaps the older bubble ending at x=443 when shifted up.
     private static readonly CapturePixelRect Usable = new(251, 80, 707, 344);
@@ -67,7 +85,8 @@ public sealed class TwoMessageRegressionTests
             new(new(1, "m32"), Scale(Newer), composer.Compose(Result("m32", "request", .56))!, 2)];
         var engine = new OverlayLayoutEngine();
         var output = engine.Layout(cards, Scale(Usable), new(dpi, dpi), cards.Select(c => c.Bubble).ToArray());
-        Assert.Equal("m32", Assert.Single(output).Key.MessageId);
+        Assert.Equal(2, output.Length);
+        Assert.Equal("m32", output[0].Key.MessageId);
         var originalRight = OverlayCoordinateMapper.ToLocal(Scale(Newer), new(dpi, dpi)).Right + 10;
         Assert.InRange(output[0].Bounds.X - originalRight, 0, 20);
         Assert.Equal(output.ToArray(), engine.Layout(cards, Scale(Usable), new(dpi, dpi), cards.Select(c => c.Bubble).ToArray()).ToArray());
@@ -77,7 +96,7 @@ public sealed class TwoMessageRegressionTests
     public void HorizontalAlternativeCannotJumpToDistantPartOfViewport()
     {
         var card = new HudCard(new(1, "m32"), Newer, new JudgmentComposer().Compose(Result("m32", "request", .56))!, 2);
-        var distantObstacle = Older with { Width = 200 };
+        var distantObstacle = Older with { Width = 200, Height = 56 };
         Assert.Empty(new OverlayLayoutEngine().Layout([card], Usable, new(96, 96), [Newer, distantObstacle]));
     }
 }

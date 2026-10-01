@@ -984,3 +984,18 @@ Lifecycle/Apply/semantic filtering remain behaviorally unchanged; opt-in per-key
 diagnostics now identify where any card is rejected. Frozen perception, capture
 audit, DPI/style behavior and TypeSafe contracts remain unchanged. Phase 6 stays
 IN PROGRESS until real acceptance; the corrected two-message retest is pending.
+
+## D-035 — Compact two-row HUD for consecutive and short Remote messages
+
+The user requested a shape change after real chat diagnostics showed successful
+Jev/Apply results being hidden by layout collisions. A short 57-pixel tail bubble
+following a 225-pixel bubble could not fit the 136-DIP-high Ready card near the
+viewport bottom, despite the bounded right-anchor alternatives from D-034.
+
+Use a 300 × 64 DIP Ready card with the same four judgments in a row-major 2×2
+grid, no separate Ready heading; pending remains 48 DIP high. Do not change
+judgments, numerical mappings, identity/lifecycle, capture safety or perception.
+Keep existing collision/containment checks and newest-first policy. The real
+geometry regression failed before this change and passes at 96/144 DPI afterward;
+the prior adjacent-message regression now fits both cards. Narrow windows may
+still require hiding unsafe cards. Manual visual acceptance remains outstanding.

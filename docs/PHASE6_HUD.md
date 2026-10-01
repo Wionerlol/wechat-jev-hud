@@ -39,13 +39,21 @@ It does not show source message text. Normal mode hides failed analyses silently
   fresh scene; no reuse of the last pre-background scene.
 - WeChat itself must be foreground. Controller/other-app foreground hides the host.
 
-Cards are 210 DIP wide with 11 DIP padding, 9 DIP rounded corners, subtle border,
-dark near-opaque background, 12–13 DIP text, no animations/shadows. The preferred
+Ready cards are 300 × 64 DIPs with four judgments arranged row-major in a 2×2 grid:
+speech act / expects response, then prior context / urgency. Pending cards are
+300 × 48 DIPs. Ready cards omit the separate heading to conserve vertical space;
+Demo remains explicitly labelled. Cards use 9 DIP padding, 9 DIP rounded corners,
+subtle border, dark near-opaque background, 12–13 DIP text, no animations/shadows. The preferred
 gap is 10 DIP to the Remote bubble's right. Try the original right anchor, nearby
 right anchors clearing adjacent bubble edges (at most 20 DIP outward), then left; small vertical
 shifts in 8 DIP steps up to 96 DIP avoid cards and all visible message rectangles.
 Everything must fit the usable chat ROI. Unsafe/impossible placements hide. Large
 multiline bubbles in a narrow window may leave no safe placement; hiding is expected.
+
+The compact shape replaces the original 210 × 136 DIP four-row card (D-035).
+The real short-tail geometry (57-pixel bubble following a 225-pixel bubble, 96 DPI)
+is covered by a red-before/green-after regression at both 96 and 144 DPI.
+Manual appearance and real-message acceptance of this new shape remain pending.
 
 ## Fixed display policy
 
