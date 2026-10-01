@@ -83,7 +83,8 @@ public sealed class HudRuntimeCoordinator(WpfOverlayPresenter presenter, string[
             if (!demo && !auditOnly)
             {
                 status("Starting native Paddle worker…");
-                perception = new(Environment.CurrentDirectory, device: Value("--paddle-device") ?? "gpu:0");
+                perception = new(Environment.CurrentDirectory, device: Value("--paddle-device") ?? "gpu:0",
+                    appendLog: debug ? attempt => Trace(new("hud_append_attempt", attempt)) : null);
                 try { await perception.Worker.InitializeAsync(ct); }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested) { return; }
                 catch (Exception) { status("Paddle unavailable; untrusted runtime fallback only."); }
@@ -259,6 +260,15 @@ public sealed class HudRuntimeCoordinator(WpfOverlayPresenter presenter, string[
                             hud_compose_ms = composeMs,
                             hud_layout_ms = layoutMs,
                             new_messages = result.NewMessages.Count,
+                            live_edge_append = result.LiveEdgeAppend,
+                            observed_messages = result.MessagesObserved.Select(m => new
+                            {
+                                id = m.Id,
+                                side = m.Side.ToString(),
+                                origin = m.Origin.ToString(),
+                                semantic_ready = m.IsTrustedForSemantics,
+                                bubble_rect = m.BubbleRect
+                            }).ToArray(),
                             fallback = perception.OcrCounters.Snapshot
                         }));
                     }
