@@ -41,7 +41,8 @@ It does not show source message text. Normal mode hides failed analyses silently
 
 Cards are 210 DIP wide with 11 DIP padding, 9 DIP rounded corners, subtle border,
 dark near-opaque background, 12–13 DIP text, no animations/shadows. The preferred
-gap is 10 DIP to the Remote bubble's right. Try right, then left; small vertical
+gap is 10 DIP to the Remote bubble's right. Try the original right anchor, nearby
+right anchors clearing adjacent bubble edges (at most 20 DIP outward), then left; small vertical
 shifts in 8 DIP steps up to 96 DIP avoid cards and all visible message rectangles.
 Everything must fit the usable chat ROI. Unsafe/impossible placements hide. Large
 multiline bubbles in a narrow window may leave no safe placement; hiding is expected.
@@ -192,6 +193,40 @@ stolen, Alt-Tab hides/restores, and minimize/restore hides/restores. The scoped
 cross-monitor audit-state-machine regression is accepted. No real Jev HUD test yet.
 Correction validation: Windows format/full build passed, zero warnings/errors;
 full .NET suite 322 passed, zero failed/skipped. Frozen perception/TypeSafe code unchanged.
+
+### Two-message Ready-render regression (2026-10-01)
+
+The first real Remote path rendered one correctly keyed Pending/Ready HUD; user
+confirmed no duplicate card or focus theft. Model `jev-1.13.0`, one batched request,
+OCR 21.9 ms, HTTP 1604.8 ms, sampled capture-start to Ready 1967.4 ms. Later
+two-message runs exposed a blocking layout case: older question result stayed
+visible while the newer request result had Success but no Ready-render evidence.
+The preserved log proves the newer Pending rendered and Success reached the Apply
+call; it did not record Apply's return or the later gate/layout stages. Do not
+claim an old Apply success from that incomplete evidence.
+
+A no-OCR/no-API/no-image-export geometry replay of the existing real viewport
+reproduced the failure: 96 DPI, ROI (251,80,707,344), older bubble
+(316,318,127,36), newer bubble (316,374,113,36). Newer right anchor x=439
+intersected the preceding bubble ending x=443 when vertically shifted; left
+placement overflowed. Old layout omitted the newer completed card and placed
+the older one. Both native geometry replay and the deterministic lifecycle→layout
+regression were red before the layout correction and green afterward. The nearby
+right candidate x=453 clears the wider neighbor, places the newest result, and
+drops the older card for card collision in this constrained view. No geometry,
+trust, semantic filter, Apply eligibility or disappearance rule was relaxed.
+Scaled 96/144-DPI and bounded-horizontal-placement regressions are included.
+Windows full build: zero warnings/errors; full .NET suite: 328 passed, zero
+failed/skipped. Final diagnostic-field update was additionally checked with all
+36 Overlay tests. Format passed; private replay files remain gitignored.
+
+`--hud-debug` traces target/schedule, active lifecycle visibility/missing counts,
+Apply result/reason, current semantic display gate, each layout input/output and
+rejection counts, scene generation/submission, Tick actions and rebuilt Canvas
+rows. UI traces are queued for background serialization; no source chat text or
+key is included. Traces diagnose current evidence without authorizing display.
+The corrected real two-message Ready-render retest remains pending. Stop after
+that retest; do not expand this debugging cycle into scroll/switch acceptance.
 
 1. Demo/audit with real foreground WeChat at 150%: confirm card style, unobstructed
    message/composer, typing focus and click-through. Audit must report positive control

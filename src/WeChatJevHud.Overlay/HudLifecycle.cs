@@ -5,7 +5,7 @@ using WeChatJevHud.TypeSafe;
 namespace WeChatJevHud.Overlay;
 
 /// <summary>Single runtime-thread owned; no text or inference here. Disappearance uses observations, not time.</summary>
-public sealed class HudLifecycle(int missingObservations = 2)
+public sealed class HudLifecycle(int missingObservations = 2, Action<HudTrace>? trace = null)
 {
     private sealed record Item(HudCard Card, int Missing = 0, bool HideMissing = false);
     private readonly Dictionary<HudKey, Item> _items = [];
@@ -15,12 +15,30 @@ public sealed class HudLifecycle(int missingObservations = 2)
     private long _epoch, _sequence;
     private bool _hidden;
     public ImmutableArray<HudCard> Cards => _hidden ? [] : _items.Values.Where(i => !i.HideMissing).Select(i => i.Card).ToImmutableArray();
+    public IReadOnlyList<HudKey> ActiveKeys => _items.Keys.ToArray();
+
+    private void TraceItems(IReadOnlyList<VisibleMessageSnapshot> current)
+    {
+        if (trace is null) return;
+        foreach (var (key, item) in _items)
+            trace(new("hud_lifecycle", new
+            {
+                key,
+                exists = true,
+                visible_now = current.Any(v => v.LogicalMessageId == key.MessageId),
+                missing_count = item.Missing,
+                hide_missing = item.HideMissing,
+                temporarily_hidden = _hidden,
+                presentation_state = item.Card.Presentation.Rows.IsEmpty ? "Pending" : "Ready",
+                bubble_rect = item.Card.Bubble
+            }));
+    }
 
     public void Observe(long epoch, IReadOnlyList<VisibleMessageSnapshot> visible, bool changed, bool temporarilyHidden)
     {
         if (epoch != _epoch) { _items.Clear(); _used.Clear(); _epoch = epoch; }
         _hidden = temporarilyHidden;
-        if (temporarilyHidden) return; // Pending identity/layout/background is not disappearance evidence.
+        if (temporarilyHidden) { TraceItems(visible); return; } // Pending identity/layout/background is not disappearance evidence.
         _visible = visible.ToDictionary(v => v.LogicalMessageId, StringComparer.Ordinal);
         foreach (var (key, item) in _items.ToArray())
         {
@@ -28,7 +46,20 @@ public sealed class HudLifecycle(int missingObservations = 2)
                 _items[key] = item with { Card = item.Card with { Bubble = bubble.BubbleRect }, Missing = 0, HideMissing = false };
             else if (changed)
             {
-                if (item.Missing + 1 >= missingObservations) _items.Remove(key);
+                if (item.Missing + 1 >= missingObservations)
+                {
+                    _items.Remove(key);
+                    trace?.Invoke(new("hud_lifecycle", new
+                    {
+                        key,
+                        exists = false,
+                        visible_now = false,
+                        missing_count = item.Missing + 1,
+                        hide_missing = true,
+                        presentation_state = "Retired",
+                        bubble_rect = item.Card.Bubble
+                    }));
+                }
                 else _items[key] = item with { Missing = item.Missing + 1 };
             }
             else if (item.Missing > 0)
@@ -36,12 +67,17 @@ public sealed class HudLifecycle(int missingObservations = 2)
                 // but unchanged observations still do not advance permanent retirement.
                 _items[key] = item with { HideMissing = true };
         }
+        TraceItems(visible);
     }
     public bool Schedule(ObservedMessage message, JevStatus status)
     {
         var key = new HudKey(message.ConversationEpochId, message.Id);
-        if (_hidden || status != JevStatus.Queued || !JevContextBuilder.IsEligible(message, _epoch) ||
-            !_visible.ContainsKey(message.Id) || _used.Contains(key) || _used.Count >= 2048) return false;
+        var reason = _hidden ? "hidden" : status != JevStatus.Queued ? "jev_not_queued"
+            : !JevContextBuilder.IsEligible(message, _epoch) ? "not_eligible"
+            : !_visible.ContainsKey(message.Id) ? "not_visible" : _used.Contains(key) ? "already_used"
+            : _used.Count >= 2048 ? "capacity" : "success";
+        trace?.Invoke(new("hud_schedule", new { key, accepted = reason == "success", reason }));
+        if (reason != "success") return false;
         _used.Add(key);
         _items.Add(key, new(new(key, _visible[message.Id].BubbleRect, HudPresentationModel.Pending, ++_sequence)));
         return true;
@@ -49,10 +85,23 @@ public sealed class HudLifecycle(int missingObservations = 2)
     public bool Apply(JevAnalysisResult result)
     {
         var key = new HudKey(result.ConversationEpochId, result.MessageId);
-        if (key.Epoch != _epoch || !_items.TryGetValue(key, out var item) || !_visible.ContainsKey(key.MessageId)) return false;
+        var reason = key.Epoch != _epoch ? "wrong_epoch" : !_items.ContainsKey(key) ? "item_missing"
+            : !_visible.ContainsKey(key.MessageId) ? "target_not_visible" : "success";
+        if (reason != "success")
+        {
+            trace?.Invoke(new("hud_apply", new { key, result_status = result.Status.ToString(), applied = false, reason }));
+            return false;
+        }
+        var item = _items[key];
         var presentation = _composer.Compose(result);
-        if (presentation is null) { _items.Remove(key); return false; }
+        if (presentation is null)
+        {
+            _items.Remove(key);
+            trace?.Invoke(new("hud_apply", new { key, result_status = result.Status.ToString(), applied = false, reason = "compose_failed" }));
+            return false;
+        }
         _items[key] = item with { Card = item.Card with { Presentation = presentation } };
+        trace?.Invoke(new("hud_apply", new { key, result_status = result.Status.ToString(), applied = true, reason = "success" }));
         return true;
     }
     public void Clear() { _items.Clear(); _used.Clear(); _visible.Clear(); }

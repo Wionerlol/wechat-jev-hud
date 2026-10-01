@@ -920,15 +920,24 @@ Detailed architecture, commands and evidence: [PHASE6_HUD.md](PHASE6_HUD.md), D-
 - [ ] Real Remote → trusted OCR → Jev → Pending/Ready HUD with exact association.
 - [ ] Scroll-out retirement/no resurrection, A→B→A, minimize/restore matrix.
 - [ ] Live per-stage and total latency recorded.
-- [x] Full Windows final format/build/test gates recorded: 322 .NET tests passed,
+- [x] Full Windows final format/build/test gates recorded: 328 .NET tests passed,
   zero failures/skips; build zero warnings/errors.
 
-30 focused Windows Overlay tests passed after the capture-audit lifecycle correction.
+36 focused Windows Overlay tests passed, including capture-audit lifecycle and
+two-message real-geometry layout regressions.
 User confirmed both monitor-transition recoveries and all three focus/visibility
 regressions on `afc8521`; logs show Verified on DISPLAY5/96 and DISPLAY1/144 with
 all pixel safety evidence passing. No Phase 6
 PASS claim follows from Demo or HWND style configuration alone. Perception/TypeSafe
 algorithms remain frozen; private artifacts stay gitignored. PR must remain Draft.
+
+2026-10-01 real two-message gate remains blocked pending corrected retest:
+the newer Jev Success previously had no Ready render while older values stayed
+visible. Private real geometry replay and deterministic regression reproduced
+the layout omission (red before/green after bounded nearby-right placement).
+Per-HudKey debug traces cover Schedule/Observe/Apply/display gate/layout/mailbox/
+Canvas. The initial single-message E2E path passed, but does not substitute for
+this two-message regression or the remaining lifecycle matrix.
 
 ### Goal
 

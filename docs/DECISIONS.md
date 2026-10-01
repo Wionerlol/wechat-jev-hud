@@ -965,3 +965,22 @@ capture bounds, monitor and DPI, requires two equivalent observations and fresh
 post-audit validation. Transient configuration/foreground changes hide and retry
 after stability; stable safety failures suppress retries on that configuration only.
 Pixel exclusion remains authoritative and desktop fallback remains forbidden.
+
+## D-034 — Nearby right anchors preserve newest-result priority in constrained HUD layout
+
+A real two-message run produced Success for both keys but continued displaying
+the older result. Existing logs lacked Apply/gate diagnostics. A private geometry
+replay independently reproduced a concrete layout failure: the newer 113-pixel
+Remote bubble's right-anchored 136-DIP card overlapped a preceding 127-pixel bubble
+by 4 pixels after moving upward to fit the viewport; its left fallback overflowed.
+The newer card was dropped while the older card could fit.
+
+Keep preferred placement and newest-first selection; add only bounded nearby right
+anchors at adjacent bubble edges, up to 20 DIPs outward. Preserve ROI containment,
+all bubble/card collision checks and the visible-card cap. The observed successful
+alternative moves 14 DIPs outward at 96 DPI. The deterministic regression requires
+the newest successful visible key in the final scene, even if only one card fits.
+Lifecycle/Apply/semantic filtering remain behaviorally unchanged; opt-in per-key
+diagnostics now identify where any card is rejected. Frozen perception, capture
+audit, DPI/style behavior and TypeSafe contracts remain unchanged. Phase 6 stays
+IN PROGRESS until real acceptance; the corrected two-message retest is pending.

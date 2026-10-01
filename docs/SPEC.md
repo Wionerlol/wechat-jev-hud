@@ -892,6 +892,13 @@ hud.top  = remoteBubble.top
 
 Use collision resolution if there is insufficient space.
 
+After the preferred right anchor fails, consider nearby right anchors clearing
+adjacent bubble edges within a configurable 20 DIP outward shift, before the left
+fallback. All candidates must stay inside the usable chat ROI and avoid all bubble
+and card rectangles. Layout visits the newest cards first; a slightly narrower
+new bubble must not lose its successful result merely because its initial HUD X
+overlaps a wider preceding bubble during vertical collision resolution (D-034).
+
 The current WeChat layout has substantial empty space to the right of remote bubbles, which is the preferred HUD area.
 
 ### Collapsed view

@@ -17,16 +17,22 @@ namespace WeChatJevHud.App;
 /// <summary>App composition/lifecycle only. Runs off Dispatcher; perception and TypeSafe algorithms are frozen.</summary>
 public sealed class HudRuntimeCoordinator(WpfOverlayPresenter presenter, string[] args, Action<string> status, Action<string>? debugInfo = null)
 {
-    private readonly HudLifecycle _hud = new();
+    private HudLifecycle _hud = new();
     private readonly OverlayLayoutEngine _layout = new();
     private readonly ConcurrentDictionary<HudKey, DateTimeOffset> _appearance = new();
     private readonly ConcurrentDictionary<HudKey, byte> _readyLogged = new();
+    private readonly ConcurrentDictionary<HudKey, byte> _pendingLogged = new();
     private readonly ConcurrentQueue<string> _renderDiagnostics = new();
+    private readonly ConcurrentQueue<HudTrace> _traceDiagnostics = new();
 
     public async Task RunAsync(CancellationToken ct)
     {
         var demo = args.Contains("--demo");
         var debug = args.Contains("--hud-debug");
+        void Trace(HudTrace entry) => _traceDiagnostics.Enqueue(entry);
+        Action<HudTrace>? trace = debug ? Trace : null;
+        _hud = new(trace: trace);
+        presenter.Trace = trace;
         var auditOnly = args.Contains("--capture-audit");
         var upload = args.Contains("--jev") && !demo && !auditOnly;
         var tracker = new Win32WeChatWindowTracker();
@@ -45,15 +51,27 @@ public sealed class HudRuntimeCoordinator(WpfOverlayPresenter presenter, string[
         }
         long epoch = 0;
         string? lastFingerprint = null;
+        string? lastReadiness = null;
         var change = new ChatRoiChangeDetector();
         void Rendered(OverlayScene scene, double updateMs, double dispatchMs)
         {
             if (!debug || scene.Demo) return;
+            foreach (var card in scene.Cards.Where(c => c.Presentation == HudPresentationModel.Pending))
+                if (_pendingLogged.TryAdd(card.Key, 0))
+                    _renderDiagnostics.Enqueue(JsonSerializer.Serialize(new
+                    {
+                        hud_pending_rendered = card.Key,
+                        at = DateTimeOffset.UtcNow,
+                        anchor_dip = card.Bounds
+                    }));
             foreach (var card in scene.Cards.Where(c => c.Presentation.Heading == "Jev"))
                 if (_appearance.TryGetValue(card.Key, out var start) && _readyLogged.TryAdd(card.Key, 0))
                     _renderDiagnostics.Enqueue(JsonSerializer.Serialize(new
                     {
                         hud_ready = card.Key,
+                        hud_ready_at = DateTimeOffset.UtcNow,
+                        anchor_dip = card.Bounds,
+                        rows = card.Presentation.Rows,
                         hud_update_ms = updateMs,
                         hud_dispatch_ms = dispatchMs,
                         total_remote_to_ready_ms = (DateTimeOffset.UtcNow - start).TotalMilliseconds
@@ -73,6 +91,7 @@ public sealed class HudRuntimeCoordinator(WpfOverlayPresenter presenter, string[
             while (!ct.IsCancellationRequested)
             {
                 while (_renderDiagnostics.TryDequeue(out var rendered)) Console.WriteLine(rendered);
+                while (_traceDiagnostics.TryDequeue(out var traced)) Console.WriteLine(JsonSerializer.Serialize(new { stage = traced.Stage, data = traced.Data }));
                 var w = tracker.Locate();
                 if (w is null || !w.IsVisible || w.IsMinimized || !w.IsForeground)
                 {
@@ -128,35 +147,106 @@ public sealed class HudRuntimeCoordinator(WpfOverlayPresenter presenter, string[
                         if (fingerprint != lastFingerprint) presenter.Present(OverlayScene.Hidden); // Hide while a changed view's identity is unresolved, including OCR wait.
                         lastFingerprint = fingerprint;
                         var result = await perception.Observer.ObserveAsync(frame, ct);
+                        var ocrCompleteAt = DateTimeOffset.UtcNow;
                         var state = perception.Observer.State;
+                        if (debug && result.FrameChanged)
+                            trace?.Invoke(new("hud_viewport", new
+                            {
+                                epoch = result.Epoch.Id,
+                                usable = roi,
+                                dpi = w.Dpi,
+                                visible = state.VisibleMessages.Select(v => new
+                                {
+                                    key = new HudKey(result.Epoch.Id, v.LogicalMessageId),
+                                    side = v.Side.ToString(),
+                                    bubble_rect = v.BubbleRect
+                                }).ToArray()
+                            }));
                         var hidden = result.Identity.Decision is ConversationIdentityDecision.PendingSwitch or ConversationIdentityDecision.LayoutTransition
                             || result.Identity.LayoutChanged || result.Baseline.State != ConversationBaselineState.Established;
-                        if (epoch != result.Epoch.Id) { _appearance.Clear(); _readyLogged.Clear(); epoch = result.Epoch.Id; }
+                        if (epoch != result.Epoch.Id) { _appearance.Clear(); _readyLogged.Clear(); _pendingLogged.Clear(); epoch = result.Epoch.Id; }
                         _hud.Observe(epoch, state.VisibleMessages, result.FrameChanged, hidden);
                         jev?.SetEpoch(epoch);
                         foreach (var target in result.NewMessages)
                         {
                             var scheduled = jev?.TrySchedule(state.Messages, target) ?? JevStatus.NotConfigured;
-                            if (_hud.Schedule(target, scheduled)) _appearance[new(epoch, target.Id)] = frame.CapturedAt - frame.Duration;
-                            if (debug) Console.WriteLine($"hud_target epoch={epoch} id={target.Id} side={target.Side} semantic_ready={target.IsTrustedForSemantics} schedule={scheduled}");
+                            var pendingCreated = _hud.Schedule(target, scheduled);
+                            if (pendingCreated) _appearance[new(epoch, target.Id)] = frame.CapturedAt - frame.Duration;
+                            if (debug) Console.WriteLine(JsonSerializer.Serialize(new
+                            {
+                                hud_target = target.Id,
+                                epoch,
+                                side = target.Side.ToString(),
+                                origin = target.Origin.ToString(),
+                                semantic_ready = target.IsTrustedForSemantics,
+                                visible = state.VisibleMessages.Any(v => v.LogicalMessageId == target.Id),
+                                schedule = scheduled.ToString(),
+                                pending_created = pendingCreated,
+                                bubble = target.BubbleRect,
+                                remote_detected_at = frame.CapturedAt,
+                                ocr_complete_at = ocrCompleteAt,
+                                jev_enqueue_returned_at = DateTimeOffset.UtcNow
+                            }));
                         }
                         double composeMs = 0;
                         foreach (var analysis in jev?.DrainResults() ?? [])
                         {
                             var compose = Stopwatch.StartNew();
-                            _hud.Apply(analysis);
+                            var applied = _hud.Apply(analysis);
                             composeMs += compose.Elapsed.TotalMilliseconds;
                             if (debug)
                             {
                                 var formatted = JevDiagnosticFormatter.Format(analysis);
                                 Console.WriteLine(formatted); debugInfo?.Invoke(formatted);
+                                Console.WriteLine(JsonSerializer.Serialize(new
+                                {
+                                    hud_result = analysis.MessageId,
+                                    applied,
+                                    epoch = analysis.ConversationEpochId,
+                                    jev_started_at = analysis.StartedAt,
+                                    jev_complete_at = analysis.CompletedAt,
+                                    hud_compose_ms = composeMs
+                                }));
                             }
                         }
                         var layout = Stopwatch.StartNew();
                         var eligibleIds = state.Messages.Where(m => m.IsTrustedForSemantics).Select(m => m.Id).ToHashSet();
-                        var cards = _layout.Layout(_hud.Cards.Where(c => eligibleIds.Contains(c.Key.MessageId)), roi, w.Dpi, state.VisibleMessages.Select(v => v.BubbleRect).ToArray());
+                        var lifecycleCards = _hud.Cards;
+                        foreach (var key in debug ? _hud.ActiveKeys : [])
+                        {
+                            var hasCard = lifecycleCards.Any(c => c.Key == key);
+                            var current = state.Messages.FirstOrDefault(m => m.Id == key.MessageId);
+                            trace?.Invoke(new("hud_display_gate", new
+                            {
+                                key,
+                                lifecycle_has_card = hasCard,
+                                current_message_found = current is not null,
+                                current_semantic_ready = current?.IsTrustedForSemantics ?? false,
+                                visible_snapshot_found = state.VisibleMessages.Any(v => v.LogicalMessageId == key.MessageId),
+                                passed_to_layout = hasCard && eligibleIds.Contains(key.MessageId)
+                            }));
+                        }
+                        var cards = _layout.Layout(lifecycleCards.Where(c => eligibleIds.Contains(c.Key.MessageId)), roi, w.Dpi, state.VisibleMessages.Select(v => v.BubbleRect).ToArray(), trace);
                         var layoutMs = layout.Elapsed.TotalMilliseconds;
                         presenter.Present(hidden ? OverlayScene.Hidden : new(w, cards));
+                        if (debug)
+                        {
+                            var readiness = JsonSerializer.Serialize(new
+                            {
+                                hud_readiness = true,
+                                epoch,
+                                paddle_initialized = perception.Worker.RuntimeInfo is not null,
+                                capture_method = frame.Method.ToString(),
+                                audit_state = audit.Phase.ToString(),
+                                jev_configured = upload && !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("TYPESAFE_API_KEY")),
+                                baseline = result.Baseline.State.ToString(),
+                                identity = result.Identity.Decision.ToString(),
+                                layout_changed = result.Identity.LayoutChanged,
+                                hidden,
+                                cards = cards.Length
+                            });
+                            if (readiness != lastReadiness) { Console.WriteLine(readiness); lastReadiness = readiness; }
+                        }
                         status($"WeChat / capture active · Paddle={perception.Worker.RuntimeInfo is not null} · JevConfigured={upload && !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("TYPESAFE_API_KEY"))} · epoch={epoch} · cards={cards.Length} · DPI={w.Dpi.X}");
                         if (debug && result.FrameChanged) Console.WriteLine(JsonSerializer.Serialize(new
                         {
@@ -182,6 +272,7 @@ public sealed class HudRuntimeCoordinator(WpfOverlayPresenter presenter, string[
         catch (Exception) { status("Startup failed; HUD hidden. Check native runtime setup."); }
         finally
         {
+            presenter.Trace = null;
             presenter.SceneRendered -= Rendered;
             presenter.Present(OverlayScene.Hidden); _hud.Clear();
             if (perception is not null) await perception.DisposeAsync();
