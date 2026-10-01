@@ -968,6 +968,8 @@ Pixel exclusion remains authoritative and desktop fallback remains forbidden.
 
 ## D-034 — Nearby right anchors preserve newest-result priority in constrained HUD layout
 
+Historical layout approach; superseded by D-036. Regression evidence is retained.
+
 A real two-message run produced Success for both keys but continued displaying
 the older result. Existing logs lacked Apply/gate diagnostics. A private geometry
 replay independently reproduced a concrete layout failure: the newer 113-pixel
@@ -987,6 +989,8 @@ IN PROGRESS until real acceptance; the corrected two-message retest is pending.
 
 ## D-035 — Compact two-row HUD for consecutive and short Remote messages
 
+Historical intermediate shape; superseded by D-036.
+
 The user requested a shape change after real chat diagnostics showed successful
 Jev/Apply results being hidden by layout collisions. A short 57-pixel tail bubble
 following a 225-pixel bubble could not fit the 136-DIP-high Ready card near the
@@ -999,3 +1003,31 @@ Keep existing collision/containment checks and newest-first policy. The real
 geometry regression failed before this change and passes at 96/144 DPI afterward;
 the prior adjacent-message regression now fits both cards. Narrow windows may
 still require hiding unsafe cards. Manual visual acceptance remains outstanding.
+
+## D-036 — Bubble anchors and shared density-aware semantic rail
+
+The user rejects further collision-tolerance tuning: consecutive short messages cannot
+each own a large adjacent detail card. Separate a 20 DIP keyed bubble-local anchor
+from one shared rail inside the usable chat ROI. Independent epoch/message results
+and all accepted lifecycle, capture, perception and semantic contracts stay unchanged.
+
+Policy orders targets by creation sequence. Default is newest Pending/Ready Expanded,
+two prior Compact, then overflow count. Expanded displays all eight unchanged
+jev-v0.1 judgments grouped into Primary/Conversation/Intensity; Compact retains
+speech act, response and prior-context values. Choice uses selected probability,
+Noul uses yes probability, Score uses weighted value /3. No confidence substitution,
+display thresholds, interaction or burst re-analysis.
+
+Geometry owns one right-side strip: provisional 280/220 DIP Expanded widths,
+200/160 DIP Compact, then a tiny Jev/count indicator. Visible bubble and marker
+rectangles define safe vertical intervals; margins/clearance remain strict. Latest
+cannot be silently displaced by old values: reduce prior details, then latest density,
+and explicitly expose overflow/geometry failure. All positions are capture-relative
+converted to current-DPI DIPs. If no safe counter fits, only safe anchors remain.
+
+This supersedes D-007's full-card adjacency assumption and D-033–D-035's four-row /
+per-card geometry, not their message association, no-resurrection, window or capture
+safety rules. Tests cover one/two/three/five targets, narrow degradation, real short
+tail geometry, DPI, exact numeric mappings, movement, reverse completion order and
+retirement. Manual two-message and three/five rapid-message presentation gates remain
+pending; do not proceed to the lifecycle matrix or mark Phase 6 PASS before them.

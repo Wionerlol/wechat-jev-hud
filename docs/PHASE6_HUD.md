@@ -15,8 +15,10 @@ never console text. Observer and TypeSafe have no Overlay/WPF references.
 
 Overlay owns pure `JudgmentComposer`, `OverlayCoordinateMapper`,
 `OverlayLayoutEngine`, `HudLifecycle`, immutable presentation/scene records, and
-`WpfOverlayPresenter`. One transparent host HWND/Canvas contains up to three newest
-cards (configurable `OverlayLayoutOptions`). No per-message windows. A small controller
+`WpfOverlayPresenter`. `HudPresentationPolicy` chooses chronological priority independently
+from geometry; `OverlayLayoutEngine` chooses one safe right-side rail and its density.
+One transparent host HWND/Canvas contains a shared rail and tiny keyed bubble anchors,
+not one large card beside every message (D-036). A small controller
 owns Stop/status; `-HudDebug` additionally shows the latest complete typed diagnostic
 result, including all judgments/distributions/confidences/model/context count/timings.
 It does not show source message text. Normal mode hides failed analyses silently.
@@ -39,25 +41,59 @@ It does not show source message text. Normal mode hides failed analyses silently
   fresh scene; no reuse of the last pre-background scene.
 - WeChat itself must be foreground. Controller/other-app foreground hides the host.
 
-Ready cards are 300 × 64 DIPs with four judgments arranged row-major in a 2×2 grid:
-speech act / expects response, then prior context / urgency. Pending cards are
-300 × 48 DIPs. Ready cards omit the separate heading to conserve vertical space;
-Demo remains explicitly labelled. Cards use 9 DIP padding, 9 DIP rounded corners,
-subtle border, dark near-opaque background, 12–13 DIP text, no animations/shadows. The preferred
-gap is 10 DIP to the Remote bubble's right. Try the original right anchor, nearby
-right anchors clearing adjacent bubble edges (at most 20 DIP outward), then left; small vertical
-shifts in 8 DIP steps up to 96 DIP avoid cards and all visible message rectangles.
-Everything must fit the usable chat ROI. Unsafe/impossible placements hide. Large
-multiline bubbles in a narrow window may leave no safe placement; hiding is expected.
+## Shared semantic rail (current; D-036)
 
-The compact shape replaces the original 210 × 136 DIP four-row card (D-035).
-The real short-tail geometry (57-pixel bubble following a 225-pixel bubble, 96 DPI)
-is covered by a red-before/green-after regression at both 96 and 144 DPI.
-Manual appearance and real-message acceptance of this new shape remain pending.
+Each active target retains its own epoch+message ID, result and 20 DIP bubble-local
+anchor. A neutral numbered marker links it to the same ordinal in the rail (1 is
+newest). Markers use a 4 DIP gap to the bubble, follow its bounds, and must stay in
+the ROI without covering any bubble or another marker. If neither side safely fits
+a marker, that marker is omitted with the target still represented in rail metadata.
+
+Default policy: newest visible Pending/Ready item Expanded; up to two previous active
+items Compact; remaining items represented by a `+N` footer. Capacity is configured
+through `HudPresentationPolicyOptions`, independently of geometry. Selection is by
+creation sequence, never Y or API completion order. A late older result cannot displace
+the newest Expanded target. This is presentation only, not burst re-analysis.
+
+Compute a single right-edge rail strip inside the chat ROI with 16 DIP margins.
+Prefer 280 DIP width, then 220 DIP minimum. Remote bubbles normally leave this strip
+free; Self/long bubbles and anchor markers divide it into safe vertical intervals.
+Choose the largest safe interval (upper interval breaks ties). Rail rectangles must
+avoid every supplied bubble and marker, with 4 DIP vertical clearance. Stack items
+with an 8 DIP gap; do not search independent full-card positions or enlarge collision
+tolerances. Ready Expanded height is 280 DIPs; Pending is 48. Compact is 56 DIPs.
+
+If Expanded cannot safely fit, try a 200/160 DIP Compact rail with the newest item
+first. If that cannot fit, use a 64×28 DIP `Jev · N` indicator plus anchors. Hidden
+prior details increase overflow count; they do not become persistent state changes.
+If even the counter cannot fit without covering a message, retain only safe anchors
+and log `no_safe_rail_area` with newest key and active count. Never use arbitrary
+desktop space or leave an older result posing as the newest. All dimensions are DIPs,
+derived inside current capture-relative ROI; negative desktop origins remain physical.
+
+The earlier 210×136 and 300×64 bubble-adjacent layouts (D-034/D-035) are historical,
+superseded by the rail. Their real geometry is retained as regression input, not the
+current display contract. Read-only/click-through/no-activate and capture safety are
+unchanged. New rail visual/manual acceptance remains pending.
+
+D-036 automated gate: native Windows format verification and full build passed with
+zero warnings/errors; 338 .NET tests passed without failures/skips, including 46
+Overlay tests. Frozen perception, Jev, lifecycle and native audit modules were not
+changed. Real two-message and rapid-message rail acceptance remains pending.
 
 ## Fixed display policy
 
-No thresholds, prompt changes or calibration from appearance. Four rows always:
+No thresholds, prompt changes or calibration from appearance. Expanded groups:
+
+- Primary: speech act label + selected option probability.
+- Conversation: expects_response, references_prior_context, contains_direct_request,
+  expresses_disagreement_or_correction, contains_time_or_plan_commitment; all use
+  Noul yes probability.
+- Intensity: urgency and textual emotional_intensity, weighted Score `/3`.
+
+Compact uses two lines: speech act + selected probability, then response and prior
+context probabilities. The four original summary values remain in the presentation
+model for diagnostics, not as a four-row layout requirement:
 
 1. Selected speech act's Chinese label + **selected option probability**.
 2. 期待回应 + Noul **yes probability**.
@@ -233,8 +269,11 @@ Apply result/reason, current semantic display gate, each layout input/output and
 rejection counts, scene generation/submission, Tick actions and rebuilt Canvas
 rows. UI traces are queued for background serialization; no source chat text or
 key is included. Traces diagnose current evidence without authorizing display.
-The corrected real two-message Ready-render retest remains pending. Stop after
-that retest; do not expand this debugging cycle into scroll/switch acceptance.
+That corrected retest remained pending; further real chat reproduced Success/Apply
+without Ready rendering for shorter messages, establishing the fundamental density
+limitation. D-036 supersedes independent-card collision fixes. First verify the new
+two-message and three/five rapid-message rail; do not resume the lifecycle matrix
+until those presentation gates pass.
 
 1. Demo/audit with real foreground WeChat at 150%: confirm card style, unobstructed
    message/composer, typing focus and click-through. Audit must report positive control

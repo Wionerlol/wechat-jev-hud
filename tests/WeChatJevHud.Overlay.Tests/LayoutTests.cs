@@ -7,32 +7,10 @@ namespace WeChatJevHud.Overlay.Tests;
 
 public class LayoutTests
 {
-    [Fact]
-    public void RightPlacementAvoidsCardsAndBubblesAndIsDeterministic()
-    {
-        HudCard[] cards = [new(new(1,"a"), new(50,50,100,40), HudPresentationModel.Pending, 2),
-            new(new(1,"b"), new(50,80,100,40), HudPresentationModel.Pending, 1)];
-        var engine = new OverlayLayoutEngine();
-        var result = engine.Layout(cards, new(0, 0, 800, 600), new(96, 96), cards.Select(c => c.Bubble).ToArray());
-        Assert.Equal(2, result.Length);
-        Assert.Equal(160, result[0].Bounds.X);
-        Assert.False(result[0].Bounds.Intersects(result[1].Bounds));
-        Assert.Equal(result.ToArray(), engine.Layout(cards, new(0, 0, 800, 600), new(96, 96), cards.Select(c => c.Bubble).ToArray()).ToArray());
-    }
-
-    [Fact]
-    public void OverflowUsesNearbyLeftAndImpossibleAreaHides()
-    {
-        HudCard[] cards = [new(new(1, "a"), new(600, 50, 100, 40), HudPresentationModel.Pending, 1)];
-        var engine = new OverlayLayoutEngine();
-        Assert.Equal(290, Assert.Single(engine.Layout(cards, new(0, 0, 720, 600), new(96, 96), [cards[0].Bubble])).Bounds.X);
-        Assert.Empty(engine.Layout(cards, new(600, 50, 100, 40), new(96, 96), [cards[0].Bubble]));
-    }
-
     [Theory]
     [InlineData(96, 150)]
     [InlineData(144, 100)]
-    public void CapturePixelsBecomeHostLocalDips(uint dpi, double expected)
+    public void CapturePixelsBecomeHostLocalDipsAndNegativeDesktopCoordinatesRemainPhysical(uint dpi, double expected)
     {
         var rect = OverlayCoordinateMapper.ToLocal(new CapturePixelRect(150, 150, 300, 60), new DpiSnapshot(dpi, dpi));
         Assert.Equal(expected, rect.X);
@@ -43,25 +21,71 @@ public class LayoutTests
     }
 
     [Fact]
-    public void CrossDpiKeepsTenDipGapAndNewestThreeCards()
+    public void RightRailAvoidsAllBubblesAndMarkersAndIsDeterministic()
+    {
+        var cards = Enumerable.Range(1, 5).Select(i => new HudCard(new(1, "m" + i), new(50, i * 56, 100, 36),
+            new JudgmentComposer().Compose(LifecycleTests.Result())!, i)).ToArray();
+        var obstacles = cards.Select(c => c.Bubble).Append(new(600, 480, 160, 36)).ToArray();
+        var engine = new OverlayLayoutEngine();
+        var result = engine.Layout(cards, new(0, 0, 800, 650), new(96, 96), obstacles);
+        var again = engine.Layout(cards, new(0, 0, 800, 650), new(96, 96), obstacles);
+        Assert.Equal(result.Items.ToArray(), again.Items.ToArray());
+        Assert.Equal(result.Anchors.ToArray(), again.Anchors.ToArray());
+        Assert.Equal(result.Overflow, again.Overflow);
+        Assert.Equal("m5", result.Items[0].Key.MessageId);
+        var bounds = result.Items.Select(i => i.Bounds).Concat(result.Anchors.Select(a => a.Bounds))
+            .Concat(result.Overflow is { } indicator ? [indicator.Bounds] : []).ToArray();
+        Assert.All(bounds, r => Assert.True(new LocalDipRect(0, 0, 800, 650).Contains(r)));
+        Assert.All(bounds, r => Assert.DoesNotContain(obstacles, o => r.Intersects(OverlayCoordinateMapper.ToLocal(o, new(96, 96)))));
+        for (var i = 0; i < bounds.Length; i++) for (var j = i + 1; j < bounds.Length; j++)
+                Assert.False(bounds[i].Intersects(bounds[j]));
+    }
+
+    [Fact]
+    public void CrossDpiKeepsRailAndAnchorsInTheSameLocalDipSpace()
     {
         var engine = new OverlayLayoutEngine();
+        HudRailLayout? original = null;
+        var presentation = new JudgmentComposer().Compose(LifecycleTests.Result())!;
         foreach (var dpi in new uint[] { 144, 96, 144 })
         {
             var scale = dpi / 96d;
-            var cards = Enumerable.Range(1, 5).Select(i => new HudCard(new(1, i.ToString()),
-                new(50, (int)(i * 100 * scale), 100, 40), HudPresentationModel.Pending, i)).ToArray();
-            var result = engine.Layout(cards, new(0, 0, 1200, 1200), new(dpi, dpi), cards.Select(c => c.Bubble).ToArray());
-            Assert.Equal(new[] { "5", "4", "3" }, result.Select(c => c.Key.MessageId));
-            Assert.All(result, c => Assert.Equal(150 / scale + 10, c.Bounds.X, 6));
+            var card = new HudCard(new(1, "a"), new((int)(50 * scale), (int)(100 * scale), (int)(100 * scale), (int)(36 * scale)),
+                presentation, 1);
+            var result = engine.Layout([card], new(0, 0, (int)(800 * scale), (int)(650 * scale)), new(dpi, dpi), [card.Bubble]);
+            Assert.Equal(154, Assert.Single(result.Anchors).Bounds.X);
+            Assert.Equal(HudPresentationLevel.Expanded, Assert.Single(result.Items).Level);
+            if (original is not null)
+            {
+                Assert.Equal(original.Items.ToArray(), result.Items.ToArray());
+                Assert.Equal(original.Anchors.ToArray(), result.Anchors.ToArray());
+            }
+            original = result;
         }
     }
 
     [Fact]
-    public void DoesNotCoverUnrelatedBubble()
+    public void SmallerExpandedWidthIsUsedBeforeCompactAndOlderItemsDegradeFirst()
     {
-        var card = new HudCard(new(1, "a"), new(50, 50, 100, 40), HudPresentationModel.Pending, 1);
-        var result = new OverlayLayoutEngine().Layout([card], new(0, 0, 400, 100), new(96, 96), [card.Bubble, new(160, 0, 240, 100)]);
-        Assert.Empty(result);
+        var cards = Enumerable.Range(1, 5).Select(i => new HudCard(new(1, "m" + i), new(10, 20 + i * 40, 40, 36),
+            new JudgmentComposer().Compose(LifecycleTests.Result())!, i)).ToArray();
+        var result = new OverlayLayoutEngine().Layout(cards, new(0, 0, 320, 400), new(96, 96), cards.Select(c => c.Bubble).ToArray());
+        Assert.Equal(HudPresentationLevel.Expanded, result.Items[0].Level);
+        Assert.Equal("m5", result.Items[0].Key.MessageId);
+        Assert.Equal(220, result.Items[0].Bounds.Width);
+        Assert.Equal(4, result.Overflow!.Count);
+    }
+
+    [Fact]
+    public void ConfiguredCompactCapacityAndEmptySceneAreExplicit()
+    {
+        var engine = new OverlayLayoutEngine(policy: new(new(MaxCompactItems: 1)));
+        var cards = Enumerable.Range(1, 5).Select(i => new HudCard(new(1, "m" + i), new(50, i * 56, 50, 36), HudPresentationModel.Pending, i)).ToArray();
+        var result = engine.Layout(cards, new(0, 0, 800, 650), new(96, 96), cards.Select(c => c.Bubble).ToArray());
+        Assert.Equal(2, result.Items.Length);
+        Assert.Equal(3, result.Overflow!.Count);
+        Assert.Equal(HudRailLayout.Empty, engine.Layout([], new(0, 0, 800, 650), new(96, 96), []));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new HudPresentationPolicy(new(-1)));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new OverlayLayoutEngine(new(RailWidth: double.NaN)));
     }
 }

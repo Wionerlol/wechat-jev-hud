@@ -15,16 +15,31 @@ public readonly record struct LocalDipRect(double X, double Y, double Width, dou
     public bool Contains(LocalDipRect other) => other.X >= X && other.Y >= Y && other.Right <= Right && other.Bottom <= Bottom;
 }
 public sealed record HudRow(string Label, string Value);
-public sealed record HudPresentationModel(string Heading, ImmutableArray<HudRow> Rows, JevAnalysisResult? Analysis = null)
+public sealed record HudDetailGroup(string Label, ImmutableArray<HudRow> Rows);
+public sealed record HudPresentationModel(string Heading, ImmutableArray<HudRow> Rows, JevAnalysisResult? Analysis = null,
+    ImmutableArray<HudDetailGroup> Details = default)
 {
     public static HudPresentationModel Pending { get; } = new("Jev · 分析中…", []);
 }
 public sealed record HudCard(HudKey Key, CapturePixelRect Bubble, HudPresentationModel Presentation, long Sequence);
-public sealed record PositionedHudCard(HudKey Key, LocalDipRect Bounds, HudPresentationModel Presentation);
-public sealed record OverlayScene(WeChatWindowSnapshot? Window, ImmutableArray<PositionedHudCard> Cards, bool Demo = false)
+public enum HudPresentationLevel { Expanded, Compact }
+public enum HudRailDensity { Empty, Expanded, Compact, Indicator, AnchorsOnly }
+public sealed record PositionedHudCard(HudKey Key, LocalDipRect Bounds, HudPresentationModel Presentation,
+    HudPresentationLevel Level, int Ordinal);
+public sealed record BubbleAnchor(HudKey Key, LocalDipRect Bounds, int Ordinal);
+public sealed record HudOverflowIndicator(LocalDipRect Bounds, int Count, HudKey LatestKey, bool IncludesLatest);
+public sealed record HudRailLayout(HudRailDensity Density, LocalDipRect? RailBounds,
+    ImmutableArray<PositionedHudCard> Items, ImmutableArray<BubbleAnchor> Anchors,
+    HudOverflowIndicator? Overflow, HudKey? LatestKey, int ActiveCount)
 {
+    public static HudRailLayout Empty { get; } = new(HudRailDensity.Empty, null, [], [], null, null, 0);
+    public bool IsEmpty => Items.IsEmpty && Anchors.IsEmpty && Overflow is null;
+}
+public sealed record OverlayScene(WeChatWindowSnapshot? Window, HudRailLayout Layout, bool Demo = false)
+{
+    public ImmutableArray<PositionedHudCard> Cards => Layout.Items;
     public DateTimeOffset CreatedAt { get; } = DateTimeOffset.UtcNow;
-    public static OverlayScene Hidden { get; } = new(null, []);
+    public static OverlayScene Hidden { get; } = new(null, HudRailLayout.Empty);
 }
 public interface IOverlayPresenter
 {

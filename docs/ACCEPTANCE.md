@@ -910,7 +910,7 @@ Create a small manually inspectable evaluation fixture set. The goal is not "100
 **Status: IN PROGRESS — implementation available; native/manual acceptance pending.**
 Detailed architecture, commands and evidence: [PHASE6_HUD.md](PHASE6_HUD.md), D-033.
 
-- [x] Code-owned fixed four-row composition, no model thresholds.
+- [x] Code-owned all-eight-judgment Expanded / concise Compact composition, no model thresholds (D-036).
 - [x] Pure coordinate/layout/lifecycle tests, keyed by epoch + message ID.
 - [x] One real WPF HWND: native automated styles/no-activation/position/hit-test checks.
 - [x] Actual WeChat capture-exclusion positive control and marker-free captures at 144/96 DPI.
@@ -920,10 +920,10 @@ Detailed architecture, commands and evidence: [PHASE6_HUD.md](PHASE6_HUD.md), D-
 - [ ] Real Remote → trusted OCR → Jev → Pending/Ready HUD with exact association.
 - [ ] Scroll-out retirement/no resurrection, A→B→A, minimize/restore matrix.
 - [ ] Live per-stage and total latency recorded.
-- [x] Full Windows final format/build/test gates recorded: 328 .NET tests passed,
+- [x] Full Windows format/build/test gates recorded for D-036: 338 .NET tests passed,
   zero failures/skips; build zero warnings/errors.
 
-36 focused Windows Overlay tests passed, including capture-audit lifecycle and
+Historical: 36 focused Windows Overlay tests passed, including capture-audit lifecycle and
 two-message real-geometry layout regressions.
 User confirmed both monitor-transition recoveries and all three focus/visibility
 regressions on `afc8521`; logs show Verified on DISPLAY5/96 and DISPLAY1/144 with
@@ -939,6 +939,25 @@ Per-HudKey debug traces cover Schedule/Observe/Apply/display gate/layout/mailbox
 Canvas. The initial single-message E2E path passed, but does not substitute for
 this two-message regression or the remaining lifecycle matrix.
 
+D-036 presentation redesign supersedes per-message full-card placement and collision
+tuning. One shared right-side rail gives newest target Expanded, up to two previous
+Compact and remaining overflow; keyed small bubble anchors follow geometry. Narrow
+space degrades density, never displays an old result as the apparent latest. Expanded
+retains all eight unchanged judgments and primitive-specific values. Observer/OCR/
+eligibility/TypeSafe/capture safety/lifecycle remain frozen. Automated tests cover
+real short-tail and prior two-message geometry, 96/144 DPI, one/two/three/five targets,
+new result association, safe containment, counter-only fallback and no resurrection.
+
+Required next manual gate ONLY: two Remote messages approximately one second apart,
+then three/five rapid short Remote messages. Confirm latest result Expanded (or explicit
+narrow-window density degradation), prior Compact/overflow, correct keyed anchors,
+no stale first-result-only scene. Do not resume scroll/switch matrix until this passes.
+Phase 6 remains IN PROGRESS and PR #7 Draft.
+
+D-036 automated evidence: 46 Overlay tests plus 292 unchanged-module tests passed
+on native Windows; format verification and full build passed (zero warnings/errors).
+This is not real rail visual acceptance.
+
 ### Goal
 
 Show Jev judgments beside the corresponding remote message.
@@ -946,7 +965,7 @@ Show Jev judgments beside the corresponding remote message.
 ### Acceptance
 
 - [ ] Transparent companion overlay exists independently of WeChat.
-- [ ] HUD anchors to the detected remote bubble, normally to its right.
+- [ ] Small keyed anchors follow Remote bubbles; shared rail represents newest/Compact/overflow.
 - [ ] HUD does not cover the source message in the normal reference layout.
 - [ ] Move/resize WeChat -> HUD follows.
 - [ ] Move WeChat between laptop/external monitor -> HUD remains correctly aligned.
@@ -954,7 +973,7 @@ Show Jev judgments beside the corresponding remote message.
 - [ ] Scroll -> HUD reconciles/repositions/hides stale anchors.
 - [ ] Minimize/hide WeChat -> HUD hides.
 - [ ] Default behavior avoids leaving the HUD floating over unrelated foreground apps.
-- [ ] Collapsed HUD shows only a few concise judgments.
+- [ ] Expanded rail shows all eight judgments; Compact prior items stay concise; narrow layout degrades safely.
 - [ ] Debug-expanded view can show timings plus distinct detection scores, OCR confidence, and Jev probability/confidence.
 - [ ] Overlay does not contaminate its own capture path.
 

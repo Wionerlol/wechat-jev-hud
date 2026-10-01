@@ -262,6 +262,14 @@ Jev unavailable
 
 ## 12. Visual reference
 
+Current Phase 6 presentation (D-036): two close Remote messages keep separate keyed
+small anchors. The newer item is Expanded in one shared semantic rail; the older is
+Compact. Five active targets use one Expanded, two Compact and `+2` overflow when
+space permits. Narrow panes degrade the newest to Compact or a tiny `Jev · N`
+indicator; an older result must never masquerade as the latest. Expanded retains all
+eight judgments, with Scores displayed as `/3`, not percentages. This supersedes
+the earlier full-card-beside-every-bubble examples.
+
 See:
 
 `docs/assets/wechat-dark-layout-reference.png`

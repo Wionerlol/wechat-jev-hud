@@ -61,7 +61,11 @@ public sealed class WpfOverlayPresenter : IOverlayPresenter, IDisposable
         Trace?.Invoke(new("hud_scene_submitted", new
         {
             scene_generation = submission.Generation,
-            cards = scene.Cards.Select(c => new { key = c.Key, presentation_state = c.Presentation.Rows.IsEmpty ? "Pending" : "Ready", bounds = c.Bounds }).ToArray()
+            density = scene.Layout.Density.ToString(),
+            latest_key = scene.Layout.LatestKey,
+            anchors = scene.Layout.Anchors,
+            overflow = scene.Layout.Overflow,
+            cards = scene.Cards.Select(c => new { key = c.Key, level = c.Level.ToString(), presentation_state = c.Presentation.Rows.IsEmpty ? "Pending" : "Ready", bounds = c.Bounds }).ToArray()
         }));
         Interlocked.Exchange(ref _latest, submission);
     }
@@ -81,7 +85,7 @@ public sealed class WpfOverlayPresenter : IOverlayPresenter, IDisposable
         if (_disposed || _probe) return;
         var submission = Volatile.Read(ref _latest);
         var scene = submission.Scene;
-        var hideReason = scene.Window is null || scene.Cards.IsEmpty ? "hidden_empty"
+        var hideReason = scene.Window is null || scene.Layout.IsEmpty ? "hidden_empty"
             : !OverlayNative.IsWeChatForeground(scene.Window) ? "hidden_not_foreground"
             : !OverlayNative.SnapshotMatchesCurrentWindow(scene.Window) ? "hidden_snapshot_mismatch" : null;
         if (hideReason is not null)
@@ -95,7 +99,10 @@ public sealed class WpfOverlayPresenter : IOverlayPresenter, IDisposable
         var w = scene.Window!;
         if (ReferenceEquals(scene, _rendered)) { TraceTick(submission, "deduped_same_scene"); return; }
         if (_rendered is { } prior && prior.Window?.CaptureBounds == w.CaptureBounds && prior.Window.Dpi == w.Dpi &&
-            prior.Demo == scene.Demo && prior.Cards.SequenceEqual(scene.Cards)) { _rendered = scene; TraceTick(submission, "deduped_same_scene"); return; }
+            prior.Demo == scene.Demo && prior.Cards.SequenceEqual(scene.Cards) &&
+            prior.Layout.Anchors.SequenceEqual(scene.Layout.Anchors) && prior.Layout.Overflow == scene.Layout.Overflow &&
+            prior.Layout.LatestKey == scene.Layout.LatestKey && prior.Layout.Density == scene.Layout.Density)
+        { _rendered = scene; TraceTick(submission, "deduped_same_scene"); return; }
         var dispatchMs = (DateTimeOffset.UtcNow - scene.CreatedAt).TotalMilliseconds;
         var timer = Stopwatch.StartNew();
         _window.Show();
@@ -106,31 +113,28 @@ public sealed class WpfOverlayPresenter : IOverlayPresenter, IDisposable
         _canvas.Children.Clear();
         foreach (var card in scene.Cards)
         {
-            var content = new Grid();
-            content.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
-            content.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
+            var content = new StackPanel();
+            var prefix = (scene.Demo ? "DEMO · " : "") + card.Ordinal + " · ";
             if (card.Presentation.Rows.IsEmpty)
             {
-                var heading = new TextBlock
-                {
-                    Text = (scene.Demo ? "DEMO · " : "") + card.Presentation.Heading,
-                    Foreground = new SolidColorBrush(Color.FromRgb(160, 169, 178)),
-                    FontSize = 12,
-                    VerticalAlignment = VerticalAlignment.Center
-                };
-                Grid.SetColumnSpan(heading, 2);
-                content.Children.Add(heading);
+                content.Children.Add(Text(prefix + card.Presentation.Heading, 20));
             }
-            for (var index = 0; index < card.Presentation.Rows.Length; index++)
+            else if (card.Level == HudPresentationLevel.Compact)
             {
-                if (index % 2 == 0) content.RowDefinitions.Add(new() { Height = new(22) });
-                var row = card.Presentation.Rows[index];
-                var grid = new Grid { Height = 22, Margin = index % 2 == 0 ? new(0, 0, 10, 0) : new(10, 0, 0, 0) };
-                grid.Children.Add(new TextBlock { Text = (scene.Demo && index == 0 ? "DEMO · " : "") + row.Label, Foreground = Brushes.Gainsboro, FontSize = 12 });
-                grid.Children.Add(new TextBlock { Text = row.Value, Foreground = Brushes.Gainsboro, FontSize = 13, HorizontalAlignment = HorizontalAlignment.Right });
-                Grid.SetRow(grid, index / 2);
-                Grid.SetColumn(grid, index % 2);
-                content.Children.Add(grid);
+                var rows = card.Presentation.Rows;
+                content.Children.Add(Text(prefix + rows[0].Label + " " + rows[0].Value, 18));
+                if (rows.Length >= 3) content.Children.Add(Text("回应" + rows[1].Value + " · 前文" + rows[2].Value, 18));
+            }
+            else
+            {
+                content.Children.Add(Text(prefix + "Jev · 最新", 22));
+                if (card.Presentation.Details.IsDefaultOrEmpty)
+                    foreach (var row in card.Presentation.Rows) content.Children.Add(Row(row));
+                else foreach (var group in card.Presentation.Details)
+                    {
+                        content.Children.Add(Text(group.Label, 20, true));
+                        foreach (var row in group.Rows) content.Children.Add(Row(row));
+                    }
             }
             var border = new Border
             {
@@ -145,14 +149,66 @@ public sealed class WpfOverlayPresenter : IOverlayPresenter, IDisposable
             };
             Canvas.SetLeft(border, card.Bounds.X); Canvas.SetTop(border, card.Bounds.Y); _canvas.Children.Add(border);
         }
+        foreach (var anchor in scene.Layout.Anchors)
+            AddSmall(anchor.Bounds, anchor.Ordinal.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        if (scene.Layout.Overflow is { } overflow)
+            AddSmall(overflow.Bounds, overflow.IncludesLatest ? "Jev · " + overflow.Count : "+" + overflow.Count + " 条");
         _rendered = scene; LastUpdateMs = timer.Elapsed.TotalMilliseconds;
         TraceTick(submission, "rendered");
         Trace?.Invoke(new("hud_scene_rendered", new
         {
             scene_generation = submission.Generation,
-            cards = scene.Cards.Select(c => new { key = c.Key, bounds = c.Bounds, rows = c.Presentation.Rows }).ToArray()
+            density = scene.Layout.Density.ToString(),
+            latest_key = scene.Layout.LatestKey,
+            anchors = scene.Layout.Anchors,
+            overflow = scene.Layout.Overflow,
+            cards = scene.Cards.Select(c => new
+            {
+                key = c.Key,
+                level = c.Level.ToString(),
+                bounds = c.Bounds,
+                rows = c.Presentation.Rows,
+                details = c.Presentation.Details.IsDefault ? null : (object)c.Presentation.Details
+            }).ToArray()
         }));
         SceneRendered?.Invoke(scene, LastUpdateMs, dispatchMs);
+    }
+
+    private static TextBlock Text(string value, double height, bool muted = false) => new()
+    {
+        Text = value,
+        Height = height,
+        FontSize = 12,
+        TextTrimming = TextTrimming.CharacterEllipsis,
+        Foreground = muted ? new SolidColorBrush(Color.FromRgb(160, 169, 178)) : Brushes.Gainsboro
+    };
+    private static Grid Row(HudRow row)
+    {
+        var grid = new Grid { Height = 22 };
+        grid.Children.Add(Text(row.Label, 22));
+        grid.Children.Add(new TextBlock { Text = row.Value, Foreground = Brushes.Gainsboro, FontSize = 13, HorizontalAlignment = HorizontalAlignment.Right });
+        return grid;
+    }
+    private void AddSmall(LocalDipRect bounds, string value)
+    {
+        var border = new Border
+        {
+            Width = bounds.Width,
+            Height = bounds.Height,
+            CornerRadius = new(5),
+            Background = new SolidColorBrush(Color.FromArgb(235, 30, 33, 37)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(66, 72, 80)),
+            BorderThickness = new(1),
+            Child = new TextBlock
+            {
+                Text = value,
+                FontSize = 11,
+                Foreground = Brushes.Gainsboro,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            }
+        };
+        Canvas.SetLeft(border, bounds.X); Canvas.SetTop(border, bounds.Y); _canvas.Children.Add(border);
     }
 
     // Used only by explicit native capture audit; no semantic result or screenshot persistence.

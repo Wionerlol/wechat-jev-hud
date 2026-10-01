@@ -7,6 +7,11 @@ Windows tests are available; real capture-exclusion, dual-DPI and Remote-to-HUD
 manual acceptance remain required. Do not treat Demo as end-to-end acceptance.
 
 Phase 6: [HUD architecture and manual test workflow](docs/PHASE6_HUD.md).
+
+Current presentation is a shared semantic rail: newest target Expanded, two prior
+Compact items, overflow count, and small numbered anchors beside Remote bubbles.
+Narrow-window density degrades automatically; click-through/no-activate behavior is
+unchanged. The rail's two-message/rapid-message manual gate is still pending.
 Run `.\scripts\hud.ps1 -Demo` for synthetic cards (no OCR/API),
 `.\scripts\hud.ps1 -CaptureAudit` for a no-persistence capture-exclusion probe,
 or `.\scripts\hud.ps1 -Jev -HudDebug` to explicitly enable trusted-text uploads

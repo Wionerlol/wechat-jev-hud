@@ -62,7 +62,9 @@ public sealed class HudRuntimeCoordinator(WpfOverlayPresenter presenter, string[
                     {
                         hud_pending_rendered = card.Key,
                         at = DateTimeOffset.UtcNow,
-                        anchor_dip = card.Bounds
+                        rail_bounds_dip = card.Bounds,
+                        anchor_dip = scene.Layout.Anchors.FirstOrDefault(a => a.Key == card.Key)?.Bounds,
+                        level = card.Level.ToString()
                     }));
             foreach (var card in scene.Cards.Where(c => c.Presentation.Heading == "Jev"))
                 if (_appearance.TryGetValue(card.Key, out var start) && _readyLogged.TryAdd(card.Key, 0))
@@ -70,7 +72,9 @@ public sealed class HudRuntimeCoordinator(WpfOverlayPresenter presenter, string[
                     {
                         hud_ready = card.Key,
                         hud_ready_at = DateTimeOffset.UtcNow,
-                        anchor_dip = card.Bounds,
+                        rail_bounds_dip = card.Bounds,
+                        anchor_dip = scene.Layout.Anchors.FirstOrDefault(a => a.Key == card.Key)?.Bounds,
+                        level = card.Level.ToString(),
                         rows = card.Presentation.Rows,
                         hud_update_ms = updateMs,
                         hud_dispatch_ms = dispatchMs,
@@ -137,7 +141,10 @@ public sealed class HudRuntimeCoordinator(WpfOverlayPresenter presenter, string[
                     if (demo)
                     {
                         var b = new CapturePixelRect(roi.X + 20, roi.Y + 30, Math.Min(160, roi.Width / 4), 40);
-                        var card = new HudCard(new(0, "DEMO"), b, new("Jev · DEMO", [new("询问", "88%"), new("期待回应", "91%"), new("依赖前文", "79%"), new("紧迫度", "0.4/3")]), 1);
+                        var card = new HudCard(new(0, "DEMO"), b, new("Jev · DEMO", [new("询问", "88%"), new("期待回应", "91%"), new("依赖前文", "79%"), new("紧迫度", "0.4/3")],
+                            Details: [new("主要", [new("询问", "88%")]),
+                                new("对话", [new("期待回应", "91%"), new("依赖前文", "79%"), new("直接请求", "8%"), new("异议/纠正", "12%"), new("时间/计划", "4%")]),
+                                new("强度", [new("紧迫度", "0.4/3"), new("情感表达", "0.2/3")])]), 1);
                         presenter.Present(new(w, _layout.Layout([card], roi, w.Dpi, [b]), true));
                         status($"DEMO · no OCR/API · DPI={w.Dpi.X} · capture={frame.Method}");
                     }
@@ -244,11 +251,15 @@ public sealed class HudRuntimeCoordinator(WpfOverlayPresenter presenter, string[
                                 identity = result.Identity.Decision.ToString(),
                                 layout_changed = result.Identity.LayoutChanged,
                                 hidden,
-                                cards = cards.Length
+                                cards = cards.Items.Length,
+                                anchors = cards.Anchors.Length,
+                                rail_density = cards.Density.ToString(),
+                                latest_key = cards.LatestKey,
+                                overflow_count = cards.Overflow?.Count ?? 0
                             });
                             if (readiness != lastReadiness) { Console.WriteLine(readiness); lastReadiness = readiness; }
                         }
-                        status($"WeChat / capture active · Paddle={perception.Worker.RuntimeInfo is not null} · JevConfigured={upload && !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("TYPESAFE_API_KEY"))} · epoch={epoch} · cards={cards.Length} · DPI={w.Dpi.X}");
+                        status($"WeChat / capture active · Paddle={perception.Worker.RuntimeInfo is not null} · JevConfigured={upload && !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("TYPESAFE_API_KEY"))} · epoch={epoch} · rail={cards.Density} · items={cards.Items.Length} · anchors={cards.Anchors.Length} · DPI={w.Dpi.X}");
                         if (debug && result.FrameChanged) Console.WriteLine(JsonSerializer.Serialize(new
                         {
                             epoch,

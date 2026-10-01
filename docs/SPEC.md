@@ -851,11 +851,13 @@ Never:
 
 The code, not Jev, decides what to display.
 
-Phase 6 uses four fixed rows without probability thresholds: selected speech act
-and its option probability, expects_response yes probability, references_prior_context
-yes probability, urgency weighted score / 3. Choice/Score distribution confidence
-never substitutes for those values. Other judgments/distributions remain available
-in the optional diagnostic controller. Earlier threshold suggestions are superseded.
+Phase 6 uses fixed presentation without probability thresholds (D-036). The Expanded
+rail item shows all eight judgments: selected speech act and its option probability,
+five Noul yes probabilities, urgency and textual emotional intensity weighted Scores
+/3. Compact prior items show selected speech act, expects_response and
+references_prior_context. Choice/Score distribution confidence never substitutes for
+these values. Distributions remain available in the optional diagnostic controller.
+Earlier thresholds and four-row/card-adjacent presentation suggestions are superseded.
 
 Avoid turning several weak signals into a strong psychological claim.
 
@@ -864,7 +866,7 @@ Avoid turning several weak signals into a strong psychological claim.
 ## 14. Overlay/HUD
 
 Current implementation/acceptance contract: [PHASE6_HUD.md](PHASE6_HUD.md), D-033.
-One transparent WPF HWND, default three newest eligible cards, local DIP layout,
+One transparent WPF HWND, a shared semantic rail and small per-message anchors, local DIP layout,
 physical desktop SetWindowPos, epoch+message identity, two-changed-observation
 disappearance grace and permanent retirement on scroll-out. Temporarily hidden
 foreground/minimize/layout/pending-identity states do not retire items. No historical
@@ -883,44 +885,40 @@ Requirements:
 
 ### Anchoring
 
-Default remote-message placement:
+Message anchoring and semantic detail placement are separate (D-036). A small neutral
+numbered 20 DIP anchor follows each active Remote BubbleRect, normally to its right,
+and links to the same ordinal/key in the shared rail. No full detail card must fit
+beside its source. Anchors and rail must avoid every visible message rectangle and
+stay inside the usable chat ROI; impossible geometry fails closed with diagnostics.
 
-```text
-hud.left = remoteBubble.right + gap
-hud.top  = remoteBubble.top
-```
-
-Use collision resolution if there is insufficient space.
-
-After the preferred right anchor fails, consider nearby right anchors clearing
-adjacent bubble edges within a configurable 20 DIP outward shift, before the left
-fallback. All candidates must stay inside the usable chat ROI and avoid all bubble
-and card rectangles. Layout visits the newest cards first; a slightly narrower
-new bubble must not lose its successful result merely because its initial HUD X
-overlaps a wider preceding bubble during vertical collision resolution (D-034).
-
-The current WeChat layout has substantial empty space to the right of remote bubbles, which is the preferred HUD area.
+`HudPresentationPolicy` orders independent targets by creation sequence, newest first,
+not by Y or completion time. `OverlayLayoutEngine` returns a `HudRailLayout` with
+presentation density, keyed rail items, anchors, latest key and overflow count.
+One right-edge strip is evaluated at 280/220 DIP Expanded widths, then 200/160 DIP
+Compact widths, then a tiny 64×28 DIP counter. Safe vertical intervals are derived
+from all visible bubble/anchor geometry with a 16 DIP ROI margin and 4 DIP clearance.
+This replaces per-card nearby-anchor/vertical-shift searching, not its tolerance.
 
 ### Collapsed view
 
-Four fixed judgments, arranged row-major in a compact two-column/two-row card
-(default 300 × 64 DIPs; pending 300 × 48 DIPs). Display order and numerical
-semantics remain unchanged; only the visual arrangement changes (D-035):
+The newest active target receives Expanded when safe; up to two prior active items
+receive Compact (configurable), remaining items use `+N`. Compact is a 56 DIP block:
 
 ```text
-询问            88%
-期待回应         91%
-依赖前文         79%
-紧迫度         0.4/3
+2 · 询问 88%
+回应91% · 前文79%
 ```
 
 ### Expanded view
 
-May show:
-- all judgment outputs;
-- raw probabilities;
-- OCR confidence;
-- pipeline timing in debug mode.
+Expanded shows all jev-v0.1 judgments grouped as Primary, Conversation and Intensity
+(280 DIP height with default typography). Pending uses 48 DIP height. No interactive
+expansion/hover is added. If geometry requires degradation, newest remains first:
+Expanded → Compact → `Jev · N` plus anchors. Prior details degrade before newest;
+an older successful result must never be the apparent latest when a newer active
+result exists. No semantic prompts, results, thresholds or eligibility change.
+If even a counter cannot safely fit, only safe anchors remain and newest/count are
+explicit diagnostics. Typed results remain separately keyed in memory.
 
 No generated reply is required for V0.
 
