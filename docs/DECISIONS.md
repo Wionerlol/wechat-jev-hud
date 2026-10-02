@@ -1104,3 +1104,38 @@ Windows format/verify and full build passed (0 warnings/errors); all 355 .NET te
 passed, including 183 Observer tests (7 new cases). No skipped tests. Automated
 evidence covers repeated transitions and negative recovery gates. Real
 96→144→96→144 with one Remote append after each stabilization remains a manual gate.
+
+## D-039 — Previous-visible continuity before history search during pure layout rerender
+
+D-038's real 144→96 gate correctly failed closed when saved tail m8 was reassigned
+to the preceding bubble and its actual target became History m9. Do not bypass that
+tail-ID check. A fresh 144-DPI probe measured scale 2/3, one unique visual anchor,
+deltaY 44.667; tail→correct candidate cost .0093 versus preceding candidate 2.6852.
+That fresh session mapped correctly, excluding an unconditional scale=1 explanation.
+
+The failing case also had mixed-DPI complete-crop caches. Replaying recorded remote
+perceptual vectors/physical geometry with that cache history reproduced m8→m9.
+KnownHistoryWindow selects partial cached anchors; AlignHistory's intervening gap
+alignment ignores geometry cost and can select the first weakly compatible occurrence.
+This can reuse the wrong cached OCR before final reconciliation. The reconstruction
+uses opaque test text and synthesized pixel samples matching the real perceptual
+vectors, not private screenshot assets or OCR acceptance evidence.
+
+Only during a live-tail-authorized layout transition with accepted identity and
+mutually unique visual translation anchors, prefer immediately previous-visible
+ordered occurrence alignment. Require bottom-preserving viewport transformation,
+existing side/visual/trusted-text compatibility, scaled width/height and ROI-relative
+left/right placement and Y within two current-DPI DIPs of raster rounding. The
+measured pair differences are subpixel/~1px; no DPI scale prior is forced. Geometry
+never establishes identity alone. Same-DPI history scrolling, transitions started
+away from live edge, unresolved identity/switches and bottom-shifting scroll do not
+authorize this path. Ordinary history matching remains unchanged outside it.
+
+D-038 still independently requires exact same reconciled logical tail after stable
+layout. No append predicates, identity thresholds, OCR/trust, Jev or HUD changes.
+Automated replay asserts unchanged epoch/timeline, preserved tail, zero transition
+NEW, then one fresh post-stability append. Windows format/verify and full build
+passed (0 warnings/errors). All 357 .NET tests passed, 0 failed/skipped, including
+185 Observer tests; D-025, D-029/D-030 and D-038 regressions remain green.
+Real 144→96 and 96→144 pre-send identity
+checks and Remote→Jev→HUD checks remain pending. Phase 6 is IN PROGRESS.

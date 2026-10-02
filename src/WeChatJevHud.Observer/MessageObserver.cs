@@ -57,6 +57,11 @@ public sealed class MessageObserver : IMessageObserver
     private double _deltaY;
     private double _geometryScale = 1;
     private bool _hasTranslationAnchors;
+    private int _translationAnchorCount;
+    private bool _layoutReconciliationActive;
+    private bool _layoutIdentityUnresolved;
+    private uint _previousCaptureDpi;
+    private readonly Action<string>? _transitionDiagnosticSink;
     private CapturePixelRect _previousMatchRegion;
     private IReadOnlyList<OccurrenceMatchDiagnostic> _occurrenceDiagnostics = [];
     private IReadOnlyList<BubbleVisibilityDiagnostic> _visibilityDiagnostics = [];
@@ -69,7 +74,8 @@ public sealed class MessageObserver : IMessageObserver
         IConversationIdentityProvider conversationIdentityProvider,
         ObserverOptions? options = null,
         Action<AppendAttemptTrace>? appendDiagnosticSink = null,
-        Action<LiveEdgeTransitionDiagnostic>? liveEdgeDiagnosticSink = null)
+        Action<LiveEdgeTransitionDiagnostic>? liveEdgeDiagnosticSink = null,
+        Action<string>? transitionDiagnosticSink = null)
     {
         _chatRegionLocator = chatRegionLocator ?? throw new ArgumentNullException(nameof(chatRegionLocator));
         _bubbleDetector = bubbleDetector ?? throw new ArgumentNullException(nameof(bubbleDetector));
@@ -79,6 +85,7 @@ public sealed class MessageObserver : IMessageObserver
         _options = options ?? new ObserverOptions();
         _appendDiagnosticSink = appendDiagnosticSink;
         _liveEdgeDiagnosticSink = liveEdgeDiagnosticSink;
+        _transitionDiagnosticSink = transitionDiagnosticSink;
         if (_options.RecentMessageLimit <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(options), "Recent message limit must be positive.");
@@ -136,6 +143,7 @@ public sealed class MessageObserver : IMessageObserver
 
         var previousChatRegion = _chatRegion;
         var dimensionsChanged = _frameWidth != frame.Width || _frameHeight != frame.Height;
+        _previousCaptureDpi = _frameDpiY;
         var dpiChanged = _frameDpiY != 0 && _frameDpiY != frame.DpiY;
         _frameDpiY = frame.DpiY;
         if (_chatRegion is null || dimensionsChanged)
@@ -191,6 +199,7 @@ public sealed class MessageObserver : IMessageObserver
         {
             _layoutStableObservationCount++;
         }
+        _layoutReconciliationActive = layoutChanged || _layoutTransitionActive;
 
         var isInitialEpoch = _epoch is null;
         if (isInitialEpoch)
@@ -202,6 +211,7 @@ public sealed class MessageObserver : IMessageObserver
             ? new ConversationIdentityComparison(true, "initial_identity=true")
             : _conversationIdentityProvider.Compare(_epoch!.VisualIdentity, identity);
         var identityMismatch = !isInitialEpoch && !IdentityMatches(identityDistance);
+        _layoutIdentityUnresolved = identityMismatch;
         if (identityMismatch)
         {
             _identityMismatchCandidates++;
@@ -401,6 +411,7 @@ public sealed class MessageObserver : IMessageObserver
         var matches = canReconcileVisibleState
             ? ReconcileAfterAppend(previousVisibleMessages, candidates, CandidateMatches)
             : [];
+        TraceLayoutReconciliation("final_alignment", previousVisibleMessages, candidates, matches);
         var trustedTextPreviousMatches = canReconcileVisibleState
             ? SequenceAlignment.Align(
                 previousVisibleMessages.Count,
@@ -742,6 +753,7 @@ public sealed class MessageObserver : IMessageObserver
         }
         _geometryScale = anchors.Count == 0 ? 1 : Median(anchors.Select(a => a.Current.Bubble.Bounds.Height / (double)a.Previous.BubbleRect.Height));
         _hasTranslationAnchors = anchors.Count > 0;
+        _translationAnchorCount = anchors.Count;
         _deltaY = anchors.Count == 0 ? 0 : Median(anchors.Select(a => a.Current.Bubble.Bounds.Y - a.Previous.BubbleRect.Y * _geometryScale));
     }
 
@@ -780,6 +792,32 @@ public sealed class MessageObserver : IMessageObserver
         IReadOnlyList<VisibleCandidate> candidates,
         Func<ObservedMessage, VisibleCandidate, bool> predicate)
     {
+        // A pure rerender is previous-visible occurrence continuity, not a search
+        // through mixed-DPI complete-crop caches in the retained history timeline.
+        // Require an anchored bottom-preserving transform; scrolling/switches cannot
+        // authorize this path. D-038 still validates the exact reconciled tail ID.
+        if (_layoutReconciliationActive && !_layoutIdentityUnresolved && _pendingLiveEdgeRearm is not null &&
+            _hasTranslationAnchors && previous.Count > 0 && candidates.Count > 0)
+        {
+            var tolerance = 2 * _frameDpiY / 96d; // two DIPs, only raster-rounding tolerance
+            var bottomDelta = _chatRegion!.Value.Bottom - _previousMatchRegion.Bottom * _geometryScale;
+            bool Compatible(ObservedMessage m, VisibleCandidate c) => predicate(m, c) &&
+                (m.Side == MessageSide.Self
+                    ? Math.Abs((_chatRegion.Value.Right - (_previousMatchRegion.Right - m.BubbleRect.Right) * _geometryScale) - c.Bubble.Bounds.Right)
+                    : Math.Abs((_chatRegion.Value.X + (m.BubbleRect.X - _previousMatchRegion.X) * _geometryScale) - c.Bubble.Bounds.X)) <= tolerance &&
+                Math.Abs(m.BubbleRect.Width * _geometryScale - c.Bubble.Bounds.Width) <= tolerance &&
+                Math.Abs(m.BubbleRect.Height * _geometryScale - c.Bubble.Bounds.Height) <= tolerance &&
+                Math.Abs(m.BubbleRect.Y * _geometryScale + _deltaY - c.Bubble.Bounds.Y) <= tolerance;
+            if (Math.Abs(_deltaY - bottomDelta) <= tolerance && Compatible(previous[^1], candidates[^1]))
+            {
+                var continuity = SequenceAlignment.Align(previous.Count, candidates.Count,
+                    (m, c) => Compatible(previous[m], candidates[c]),
+                    (m, c) => GeometryCost(previous[m], candidates[c]))
+                    .Select(pair => (Left: _messages.FindIndex(m => m.Id == previous[pair.Left].Id), Right: pair.Right)).ToArray();
+                TraceLayoutReconciliation("layout_previous_visible_continuity", previous, candidates, continuity);
+                return continuity;
+            }
+        }
         // A known timeline window takes precedence over the last viewport's Y positions.
         // In particular, one surviving equal occurrence must not steal its neighbour
         // when returning to an anchored run. Append suffixes never enter this method.
@@ -788,6 +826,8 @@ public sealed class MessageObserver : IMessageObserver
                 (m, c) => predicate(previous[m], candidates[c]),
                 (m, c) => GeometryCost(previous[m], candidates[c]))
             .Select(pair => (Left: _messages.FindIndex(m => m.Id == previous[pair.Left].Id), Right: pair.Right)).ToArray();
+        TraceLayoutReconciliation(known is null ? "previous_visible_anchors" : "known_history_anchors",
+            previous, candidates, anchors);
         if (known is not null)
             foreach (var (message, candidate) in known)
                 candidates[candidate].KnownHistoryId = _messages[message].Id;
@@ -809,6 +849,59 @@ public sealed class MessageObserver : IMessageObserver
             rightStart = right + 1;
         }
         return result;
+    }
+
+    private void TraceLayoutReconciliation(string stage, IReadOnlyList<ObservedMessage> previous,
+        IReadOnlyList<VisibleCandidate> candidates, IReadOnlyList<(int Left, int Right)> matches)
+    {
+        if (!_layoutReconciliationActive || _transitionDiagnosticSink is null) return;
+        _transitionDiagnosticSink(System.Text.Json.JsonSerializer.Serialize(new
+        {
+            stage,
+            epoch = _epoch?.Id,
+            previous_dpi = _previousCaptureDpi,
+            current_dpi = _frameDpiY,
+            scale = _geometryScale,
+            delta_y = _deltaY,
+            translation_anchors = _translationAnchorCount,
+            previous = previous.Select((m, i) => new
+            {
+                index = i,
+                id = m.Id,
+                side = m.Side,
+                bounds = m.BubbleRect,
+                structural_full = m.IsFullyVisible,
+                visual = m.VisualFingerprint,
+                crop = _visibleMessages.FirstOrDefault(v => v.LogicalMessageId == m.Id)?.CropFingerprint,
+                complete_crop = m.CompleteCropFingerprint,
+                complete_text = m.HasCompleteText
+            }),
+            current = candidates.Select((c, i) => new
+            {
+                index = i,
+                side = c.Bubble.Side,
+                bounds = c.Bubble.Bounds,
+                structural_full = c.IsFullyVisible,
+                visual = c.VisualFingerprint,
+                crop = c.CropFingerprint,
+                independent_ocr = c.HasIndependentOcrEvidence
+            }),
+            pairs = previous.SelectMany((m, p) => candidates.Select((c, n) => new
+            {
+                previous_index = p,
+                previous_id = m.Id,
+                current_index = n,
+                weak = CandidateVisuallyMatches(m, c),
+                strong = CandidateStronglyVisuallyMatches(m, c),
+                trusted_text = CandidateTrustedTextMatches(m, c),
+                partial = PartialGeometryMatches(m, c),
+                distance = PerceptualFingerprint.Distance(PerceptualFingerprint.Parse(m.VisualFingerprint),
+                    PerceptualFingerprint.Parse(c.VisualFingerprint)),
+                cost = GeometryCost(m, c),
+                accepted = matches.Any(pair => _messages[pair.Left].Id == m.Id && pair.Right == n)
+            })),
+            mapping = matches.Select(pair => new { id = _messages[pair.Left].Id, current_index = pair.Right })
+        }));
     }
 
     private IReadOnlyList<(int Left, int Right)>? KnownHistoryWindow(IReadOnlyList<VisibleCandidate> candidates)

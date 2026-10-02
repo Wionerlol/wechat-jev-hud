@@ -27,7 +27,8 @@ public sealed class PerceptionRuntime : IAsyncDisposable
         Observer = new MessageObserver(new DarkThemeChatRegionLocator(), new DarkThemeBubbleDetector(), ocr,
             new ChatRoiChangeDetector(), new VisualConversationIdentityProvider(), appendDiagnosticSink: appendLog,
             liveEdgeDiagnosticSink: appendLog is null ? null : evidence => Console.WriteLine(
-                "live_edge_transition " + System.Text.Json.JsonSerializer.Serialize(evidence)));
+                "live_edge_transition " + System.Text.Json.JsonSerializer.Serialize(evidence)),
+            transitionDiagnosticSink: appendLog is null ? null : evidence => Console.WriteLine("layout_reconciliation " + evidence));
     }
     public async ValueTask DisposeAsync()
     {

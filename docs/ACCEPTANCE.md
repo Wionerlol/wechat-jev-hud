@@ -907,6 +907,19 @@ Create a small manually inspectable evaluation fixture set. The goal is not "100
 
 ## Phase 6 — Anchored HUD overlay
 
+### D-039 cross-DPI previous-visible occurrence correction
+
+- [x] Recorded-vector/geometry mixed-cache replay reproduced m8→History m9 before
+      the narrow correction; after it the tail/timeline remain unchanged.
+- [x] Layout-time scroll rejection and existing history/append/D-038 suites pass.
+- [x] Windows format/verify and full build (0 warnings/errors); all 357 .NET tests
+      passed, 0 failed/skipped, including 185 Observer tests.
+- [ ] Real 144→96 preserves previous-visible IDs before sending; subsequent Remote
+      is one LiveNew, one Jev request and one keyed Ready HUD.
+- [ ] Real 96→144 passes the same pre-send identity and subsequent-message gate.
+
+D-038's exact tail-ID fail-closed requirement remains unchanged. No Phase 6 PASS yet.
+
 ### D-038 narrow cross-DPI live-edge integration correction
 
 - [x] Old-code regression reproduced: retained logical tail with changed crop

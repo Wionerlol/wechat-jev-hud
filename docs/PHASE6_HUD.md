@@ -3,7 +3,8 @@
 Status: **IN PROGRESS**, not PASS. Branch `codex/phase-6-hud`, base/target `main`.
 The real dual-monitor Demo and Remote WeChat → Jev → HUD gates require human operation.
 Phase 4.5 perception and Phase 5 inference algorithms remain frozen, except the
-explicitly authorized D-038 live-edge eligibility recovery around layout/DPI transitions.
+explicitly authorized D-038 eligibility recovery and D-039 previous-visible occurrence
+continuity around pure layout/DPI transitions. Ordinary history matching remains frozen.
 
 ## Architecture
 
@@ -16,6 +17,13 @@ can re-arm eligibility for the next append. This does not modify append predicat
 Opt-in HUD append diagnostics also emit redacted `live_edge_transition` records:
 State, Epoch, SavedTailId, CurrentTailId, LayoutStableCount and Reason.
 The 96→144→96→144 real Remote-message retest is still pending; Phase 6 is not PASS.
+D-039 corrects mixed-cache history anchoring during a pure rerender only. It requires
+known pre-transition live-tail intent, accepted identity, unique visual transform
+anchors and bottom-preserving geometry, then gives previous-visible ordered IDs
+precedence over whole-history cache search. The independent D-038 exact tail-ID
+gate is not relaxed. Opt-in `layout_reconciliation` diagnostics contain fingerprints,
+geometry/cost, evidence flags and final mappings, never message text.
+Two-direction real retest remains required; no unrelated Phase 6 work is authorized.
 App's background `HudRuntimeCoordinator` runs capture/Observer and submits eligible
 targets to the existing asynchronous Jev coordinator. Overlay consumes typed results,
 never console text. Observer and TypeSafe have no Overlay/WPF references.
