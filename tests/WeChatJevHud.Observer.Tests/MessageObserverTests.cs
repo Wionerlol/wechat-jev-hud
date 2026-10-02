@@ -271,6 +271,126 @@ public sealed class MessageObserverTests
     }
 
     [Fact]
+    public async Task Live_edge_rearms_each_96_144_96_144_transition_without_replaying()
+    {
+        var diagnostics = new List<LiveEdgeTransitionDiagnostic>();
+        var bubbleFrames = new List<DetectedBubble[]>();
+        var captures = new List<CapturedFrame>();
+        for (var stage = 0; stage < 4; stage++)
+        {
+            var scale = stage % 2 == 0 ? 1 : 1.5;
+            var bubbles = Enumerable.Range(0, stage + 1).Select(i => new DetectedBubble(
+                new((int)(12 * scale), (int)((40 + 35 * i) * scale), (int)(40 * scale), (int)(24 * scale)),
+                MessageSide.Remote, .95)).ToArray();
+            if (stage > 0)
+            {
+                bubbleFrames.Add(bubbles[..^1]);
+                captures.Add(Frame((int)(200 * scale), (int)(200 * scale), 10,
+                    bubbles[..^1].Select(b => (b.Bounds, (byte)(120 + stage * 2))).ToArray(), (uint)(96 * scale)));
+            }
+            bubbleFrames.Add(bubbles);
+            captures.Add(Frame((int)(200 * scale), (int)(200 * scale), 10,
+                bubbles.Select(b => (b.Bounds, (byte)(120 + stage * 2))).ToArray(), (uint)(96 * scale)));
+        }
+        var observer = new MessageObserver(new StubChatRegionLocator(), new StubBubbleDetector(bubbleFrames.ToArray()),
+            new StubOcrEngine(Ocr("text")), new ChatRoiChangeDetector(),
+            new StubConversationIdentityProvider(Identity(1)), liveEdgeDiagnosticSink: diagnostics.Add);
+        await observer.ObserveAsync(captures[0], default);
+        var tailId = Assert.Single(observer.State.VisibleMessages).LogicalMessageId;
+        for (var stage = 1; stage < 4; stage++)
+        {
+            for (var stable = 0; stable < 3; stable++)
+                Assert.Empty((await observer.ObserveAsync(captures[stage * 2 - 1], default)).NewMessages);
+            Assert.Equal(tailId, observer.State.VisibleMessages[^1].LogicalMessageId);
+            var append = await observer.ObserveAsync(captures[stage * 2], default);
+            tailId = Assert.Single(append.NewMessages).Id;
+            Assert.Equal(1, append.Epoch.Id);
+            Assert.Empty((await observer.ObserveAsync(captures[stage * 2], default)).NewMessages);
+        }
+        Assert.Equal(3, diagnostics.Count(d => d.State == "rearmed"));
+    }
+
+    [Theory]
+    [InlineData("tail_missing")]
+    [InlineData("tail_id_changed")]
+    [InlineData("switch_pending")]
+    [InlineData("not_at_edge")]
+    public async Task Live_edge_rearm_requires_saved_tail_and_same_epoch_live_intent(string scenario)
+    {
+        var diagnostics = new List<LiveEdgeTransitionDiagnostic>();
+        var tail = Bubble(12, 60, 120, MessageSide.Remote);
+        var other = Bubble(12, 105, 190, MessageSide.Self);
+        var scaled = tail with { Bounds = new(18, 90, 60, 36) };
+        var foreign = other with { Bounds = new(18, 150, 60, 36) };
+        var frames = new List<DetectedBubble[]> { new[] { tail } };
+        if (scenario == "not_at_edge") frames.Add([other]);
+        var current = scenario == "tail_missing" ? Array.Empty<DetectedBubble>() :
+            scenario == "tail_id_changed" ? new[] { scaled, foreign } :
+            scenario == "switch_pending" ? new[] { foreign } : new[] { foreign };
+        frames.Add(current);
+        var identity = scenario == "switch_pending"
+            ? new StubConversationIdentityProvider(Identity(1), Identity(2))
+            : new StubConversationIdentityProvider(Identity(1));
+        var observer = new MessageObserver(new StubChatRegionLocator(), new StubBubbleDetector(frames.ToArray()),
+            new StubOcrEngine(Ocr("tail"), Ocr("other")), new ChatRoiChangeDetector(), identity,
+            liveEdgeDiagnosticSink: diagnostics.Add);
+        await observer.ObserveAsync(Frame(10, [(tail.Bounds, (byte)120)]), default);
+        if (scenario == "not_at_edge")
+            Assert.Empty((await observer.ObserveAsync(Frame(10, [(other.Bounds, (byte)190)]), default)).NewMessages);
+        var transition = Frame(300, 300, 10,
+            current.Select(b => (b.Bounds, b.Side == MessageSide.Remote ? (byte)126 : (byte)190)).ToArray(), 144);
+        for (var i = 0; i < 6; i++)
+            Assert.Empty((await observer.ObserveAsync(transition, default)).NewMessages);
+        Assert.DoesNotContain(diagnostics, d => d.State == "rearmed");
+        Assert.Contains(diagnostics, d => d.State == "abandoned");
+        Assert.Contains(diagnostics, d => d.Reason == (scenario == "not_at_edge"
+            ? "transition_started_not_at_edge" : scenario));
+    }
+
+    [Fact]
+    public async Task Stable_history_scroll_cannot_create_layout_rearm_evidence()
+    {
+        var diagnostics = new List<LiveEdgeTransitionDiagnostic>();
+        var tail = Bubble(12, 100, 120, MessageSide.Remote);
+        var history = Bubble(12, 60, 180, MessageSide.Self);
+        var nextHistory = Bubble(12, 110, 200, MessageSide.Remote);
+        var observer = new MessageObserver(new StubChatRegionLocator(),
+            new StubBubbleDetector([tail], [history], [history, nextHistory]),
+            new StubOcrEngine(Ocr("tail"), Ocr("older"), Ocr("other history")),
+            new ChatRoiChangeDetector(), new StubConversationIdentityProvider(Identity(1)),
+            liveEdgeDiagnosticSink: diagnostics.Add);
+        await observer.ObserveAsync(Frame(10, [(tail.Bounds, (byte)120)]), default);
+        Assert.Empty((await observer.ObserveAsync(Frame(10, [(history.Bounds, (byte)180)]), default)).NewMessages);
+        Assert.Empty((await observer.ObserveAsync(Frame(10,
+            [(history.Bounds, (byte)180), (nextHistory.Bounds, (byte)200)]), default)).NewMessages);
+        Assert.Empty(diagnostics);
+        Assert.Equal(1, observer.State.Epoch!.Id);
+    }
+
+    [Fact]
+    public async Task Stable_layout_rearms_same_logical_tail_after_weak_rerender_continuity()
+    {
+        var tail = Bubble(12, 60, 120, MessageSide.Remote);
+        var scaled = tail with { Bounds = new(18, 90, 60, 36) };
+        var next = scaled with { Bounds = scaled.Bounds with { Y = 150 } };
+        var observer = CreateObserver(new StubBubbleDetector([tail], [scaled], [scaled, next]),
+            new StubOcrEngine(Ocr("tail"), Ocr("next")),
+            identityProvider: new StubConversationIdentityProvider(Identity(1)));
+        var baseline = await observer.ObserveAsync(Frame(10, [(tail.Bounds, (byte)120)]), default);
+        var resized = Frame(300, 300, 10, [(scaled.Bounds, (byte)126)], 144);
+        for (var i = 0; i < 3; i++)
+        {
+            Assert.Empty((await observer.ObserveAsync(resized, default)).NewMessages);
+            Assert.Equal(baseline.MessagesObserved[0].Id, Assert.Single(observer.State.VisibleMessages).LogicalMessageId);
+        }
+        var appended = Frame(300, 300, 10, [(scaled.Bounds, (byte)126), (next.Bounds, (byte)126)], 144);
+        var result = await observer.ObserveAsync(appended, default);
+        Assert.Single(result.NewMessages);
+        Assert.Equal(baseline.Epoch.Id, result.Epoch.Id);
+        Assert.Empty((await observer.ObserveAsync(appended, default)).NewMessages);
+    }
+
+    [Fact]
     public async Task Dpi_rerender_then_idle_then_append_uses_visible_fingerprint_not_ocr_cache_fingerprint()
     {
         var a = Bubble(12, 60, 120, MessageSide.Self);
@@ -2113,7 +2233,8 @@ public sealed class MessageObserverTests
         int width,
         int height,
         byte headerValue,
-        IReadOnlyList<(CapturePixelRect Rect, byte Value)> bubbles)
+        IReadOnlyList<(CapturePixelRect Rect, byte Value)> bubbles,
+        uint dpi = 96)
     {
         var stride = width * 4;
         var pixels = new byte[stride * height];
@@ -2130,7 +2251,7 @@ public sealed class MessageObserverTests
             new DesktopPixelRect(0, 0, width, height),
             CaptureMethod.RenderWindow,
             DateTimeOffset.UtcNow,
-            TimeSpan.FromMilliseconds(1));
+            TimeSpan.FromMilliseconds(1), dpi);
     }
 
     private static CapturedFrame PatternedFrame(

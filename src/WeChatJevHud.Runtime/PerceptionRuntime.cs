@@ -25,7 +25,9 @@ public sealed class PerceptionRuntime : IAsyncDisposable
             "--model","PP-OCRv6_small_rec","--device",device,"--warmup-count","1"]), OcrCounters, workerLog);
         var ocr = new UnifiedPaddleOcrEngine(new PaddleRecognitionOcrEngine(Worker), adaptive, OcrCounters);
         Observer = new MessageObserver(new DarkThemeChatRegionLocator(), new DarkThemeBubbleDetector(), ocr,
-            new ChatRoiChangeDetector(), new VisualConversationIdentityProvider(), appendDiagnosticSink: appendLog);
+            new ChatRoiChangeDetector(), new VisualConversationIdentityProvider(), appendDiagnosticSink: appendLog,
+            liveEdgeDiagnosticSink: appendLog is null ? null : evidence => Console.WriteLine(
+                "live_edge_transition " + System.Text.Json.JsonSerializer.Serialize(evidence)));
     }
     public async ValueTask DisposeAsync()
     {

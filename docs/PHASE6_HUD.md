@@ -2,13 +2,20 @@
 
 Status: **IN PROGRESS**, not PASS. Branch `codex/phase-6-hud`, base/target `main`.
 The real dual-monitor Demo and Remote WeChat → Jev → HUD gates require human operation.
-No changes to Phase 4.5 perception or Phase 5 inference algorithms are authorized here.
+Phase 4.5 perception and Phase 5 inference algorithms remain frozen, except the
+explicitly authorized D-038 live-edge eligibility recovery around layout/DPI transitions.
 
 ## Architecture
 
 `Runtime.PerceptionRuntime` shares the existing production object construction between
 Diagnostics and App: exact existing detector, Unified Paddle, Adaptive failure-only
 fallback, Observer and options. No matching, OCR, trust or identity changes.
+Pure layout/DPI transitions now preserve pre-transition live-tail intent (D-038).
+After two stable observations, exact reconciled tail-ID continuity in the same epoch
+can re-arm eligibility for the next append. This does not modify append predicates.
+Opt-in HUD append diagnostics also emit redacted `live_edge_transition` records:
+State, Epoch, SavedTailId, CurrentTailId, LayoutStableCount and Reason.
+The 96→144→96→144 real Remote-message retest is still pending; Phase 6 is not PASS.
 App's background `HudRuntimeCoordinator` runs capture/Observer and submits eligible
 targets to the existing asynchronous Jev coordinator. Overlay consumes typed results,
 never console text. Observer and TypeSafe have no Overlay/WPF references.

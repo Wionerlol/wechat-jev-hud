@@ -907,6 +907,20 @@ Create a small manually inspectable evaluation fixture set. The goal is not "100
 
 ## Phase 6 — Anchored HUD overlay
 
+### D-038 narrow cross-DPI live-edge integration correction
+
+- [x] Old-code regression reproduced: retained logical tail with changed crop
+      fingerprint leaves the first stable post-transition append as History.
+- [x] Same-epoch exact reconciled full tail can re-arm after layout stability;
+      no append matcher, OCR/trust, history or HUD algorithms changed.
+- [x] Windows format/verify, full build (0 warnings/errors), full .NET suite:
+      355 passed, 0 failed/skipped; Observer 183, including 7 new regression cases.
+- [ ] Real 96→144, 144→96, 96→144: after each stable re-arm, one Remote
+      message must be LiveNew exactly once, with one Jev schedule and HUD item.
+
+This is an authorized narrow integration correction, not a reopening of Phase 4.5.
+Phase 6 remains IN PROGRESS; PR #7 stays Draft until the real gate passes.
+
 **Status: IN PROGRESS — implementation available; native/manual acceptance pending.**
 Detailed architecture, commands and evidence: [PHASE6_HUD.md](PHASE6_HUD.md), D-033.
 

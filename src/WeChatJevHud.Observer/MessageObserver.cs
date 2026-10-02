@@ -22,6 +22,9 @@ public sealed class MessageObserver : IMessageObserver
     private string? _lastFrameFingerprint;
     private int _frameWidth;
     private int _frameHeight;
+    private uint _frameDpiY;
+    private PendingLiveEdgeRearm? _pendingLiveEdgeRearm;
+    private readonly Action<LiveEdgeTransitionDiagnostic>? _liveEdgeDiagnosticSink;
     private long _nextMessageId;
     private long _framesChecked;
     private long _unchangedFrames;
@@ -65,7 +68,8 @@ public sealed class MessageObserver : IMessageObserver
         IChatRoiChangeDetector changeDetector,
         IConversationIdentityProvider conversationIdentityProvider,
         ObserverOptions? options = null,
-        Action<AppendAttemptTrace>? appendDiagnosticSink = null)
+        Action<AppendAttemptTrace>? appendDiagnosticSink = null,
+        Action<LiveEdgeTransitionDiagnostic>? liveEdgeDiagnosticSink = null)
     {
         _chatRegionLocator = chatRegionLocator ?? throw new ArgumentNullException(nameof(chatRegionLocator));
         _bubbleDetector = bubbleDetector ?? throw new ArgumentNullException(nameof(bubbleDetector));
@@ -74,6 +78,7 @@ public sealed class MessageObserver : IMessageObserver
         _conversationIdentityProvider = conversationIdentityProvider ?? throw new ArgumentNullException(nameof(conversationIdentityProvider));
         _options = options ?? new ObserverOptions();
         _appendDiagnosticSink = appendDiagnosticSink;
+        _liveEdgeDiagnosticSink = liveEdgeDiagnosticSink;
         if (_options.RecentMessageLimit <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(options), "Recent message limit must be positive.");
@@ -131,6 +136,8 @@ public sealed class MessageObserver : IMessageObserver
 
         var previousChatRegion = _chatRegion;
         var dimensionsChanged = _frameWidth != frame.Width || _frameHeight != frame.Height;
+        var dpiChanged = _frameDpiY != 0 && _frameDpiY != frame.DpiY;
+        _frameDpiY = frame.DpiY;
         if (_chatRegion is null || dimensionsChanged)
         {
             _chatRegion = _chatRegionLocator.Locate(frame).Bounds;
@@ -139,7 +146,7 @@ public sealed class MessageObserver : IMessageObserver
         }
 
         var layoutChanged = previousChatRegion is not null &&
-                            (dimensionsChanged || !previousChatRegion.Value.Equals(_chatRegion!.Value));
+                            (dimensionsChanged || dpiChanged || !previousChatRegion.Value.Equals(_chatRegion!.Value));
         var changeTimer = Stopwatch.StartNew();
         var identity = _conversationIdentityProvider.GetVisualEvidence(frame, _chatRegion!.Value);
         var tentativeIdentityMismatch = _epoch is not null &&
@@ -162,9 +169,16 @@ public sealed class MessageObserver : IMessageObserver
 
         if (layoutChanged)
         {
+            if (_pendingLiveEdgeRearm is null && _atLiveEdge && _liveTailId is not null &&
+                _baselineEstablished && _epoch is not null && _pendingSwitch is null)
+                _pendingLiveEdgeRearm = new(_epoch.Id, _liveTailId);
+            if (_pendingLiveEdgeRearm is not null)
+                _pendingLiveEdgeRearm = _pendingLiveEdgeRearm with { HasReconciledSnapshot = false };
             _layoutTransitions++;
             _layoutTransitionActive = true;
             _layoutStableObservationCount = 0;
+            ReportLiveEdgeTransition(_pendingLiveEdgeRearm is null ? "abandoned" : "suspended",
+                _pendingLiveEdgeRearm is null ? "transition_started_not_at_edge" : "layout_transition");
             _pendingSwitch = null;
             if (_awaitingInitialSnapshot)
             {
@@ -215,7 +229,9 @@ public sealed class MessageObserver : IMessageObserver
             _identitySwitchesSuppressed++;
         }
 
-        frameChanged = isInitialEpoch || identityMismatch || _awaitingInitialSnapshot ||
+        frameChanged = isInitialEpoch || identityMismatch || layoutChanged || _awaitingInitialSnapshot ||
+                       (_pendingLiveEdgeRearm is { HasReconciledSnapshot: false } &&
+                        _layoutStableObservationCount >= _options.LayoutStableObservations) ||
                        !string.Equals(_lastFrameFingerprint, frameFingerprint, StringComparison.Ordinal);
         changeTimer.Stop();
         frameTimer.Stop();
@@ -223,6 +239,10 @@ public sealed class MessageObserver : IMessageObserver
 
         if (!frameChanged)
         {
+            TryRearmLiveEdge(identityMismatch);
+            if (!identityMismatch && _layoutTransitionActive &&
+                _layoutStableObservationCount >= _options.LayoutStableObservations)
+                _layoutTransitionActive = false;
             _unchangedFrames++;
             return Result(
                 frameChanged: false,
@@ -464,6 +484,7 @@ public sealed class MessageObserver : IMessageObserver
                     identity,
                     observations,
                     candidates.Select(PendingCandidate.From).ToArray());
+                AbandonLiveEdgeRearm("switch_pending");
                 _lastFrameFingerprint = frameFingerprint;
                 if (observations < _options.PendingSwitchRequiredObservations)
                 {
@@ -650,6 +671,9 @@ public sealed class MessageObserver : IMessageObserver
             candidate.VisualFingerprint,
             candidate.IsFullyVisible,
             candidate.CropFingerprint)));
+        if (_pendingLiveEdgeRearm is not null)
+            _pendingLiveEdgeRearm = _pendingLiveEdgeRearm with { HasReconciledSnapshot = true };
+        TryRearmLiveEdge(identityMismatch && identityObservation.Decision != ConversationIdentityDecision.RebaseSameConversation);
         TrimRecentState();
         _lastFrameFingerprint = frameFingerprint;
         foreach (var message in observed)
@@ -668,6 +692,39 @@ public sealed class MessageObserver : IMessageObserver
     }
 
     // D-025 alignment tolerance only, not a completeness decision.
+    private sealed record PendingLiveEdgeRearm(long EpochId, string TailId, bool HasReconciledSnapshot = false);
+
+    private void ReportLiveEdgeTransition(string state, string reason) =>
+        _liveEdgeDiagnosticSink?.Invoke(new(state, _epoch?.Id, _pendingLiveEdgeRearm?.TailId,
+            _visibleMessages.LastOrDefault()?.LogicalMessageId, _layoutStableObservationCount, reason));
+
+    private void AbandonLiveEdgeRearm(string reason)
+    {
+        if (_pendingLiveEdgeRearm is null) return;
+        ReportLiveEdgeTransition("abandoned", reason);
+        _pendingLiveEdgeRearm = null;
+    }
+
+    private void TryRearmLiveEdge(bool unresolvedIdentity)
+    {
+        if (_pendingLiveEdgeRearm is not { } pending) return;
+        if (_epoch?.Id != pending.EpochId) { AbandonLiveEdgeRearm("epoch_changed"); return; }
+        if (!_baselineEstablished || _awaitingInitialSnapshot) { AbandonLiveEdgeRearm("baseline_not_established"); return; }
+        if (_pendingSwitch is not null) { AbandonLiveEdgeRearm("switch_pending"); return; }
+        if (unresolvedIdentity || !pending.HasReconciledSnapshot ||
+            _layoutStableObservationCount < _options.LayoutStableObservations) return;
+        var tail = _visibleMessages.LastOrDefault();
+        if (!_messages.Any(m => m.Id == pending.TailId) || tail is null)
+        { AbandonLiveEdgeRearm("tail_missing"); return; }
+        if (tail.LogicalMessageId != pending.TailId)
+        { AbandonLiveEdgeRearm("tail_id_changed"); return; }
+        if (!tail.IsFullyVisible) { AbandonLiveEdgeRearm("tail_not_fully_visible"); return; }
+        _atLiveEdge = true;
+        _liveTailCropFingerprint = tail.CropFingerprint;
+        ReportLiveEdgeTransition("rearmed", "same_tail_restored");
+        _pendingLiveEdgeRearm = null;
+    }
+
     private static int BoundaryMargin(CapturePixelRect roi) => Math.Max(1, roi.Height / 500);
 
     private static bool CanReuseText(ObservedMessage message, VisibleCandidate candidate) =>
@@ -801,6 +858,7 @@ public sealed class MessageObserver : IMessageObserver
         bool awaitInitialSnapshot)
     {
         var previous = _epoch;
+        AbandonLiveEdgeRearm("epoch_changed");
         if (previous is not null)
         {
             _conversationSwitches++;
@@ -873,6 +931,7 @@ public sealed class MessageObserver : IMessageObserver
         _baselineEstablishedThisFrame = true;
         _messages.Clear();
         _visibleMessages.Clear();
+        AbandonLiveEdgeRearm("baseline_not_established");
         _liveTailId = null;
     }
 

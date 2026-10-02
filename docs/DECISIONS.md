@@ -1077,3 +1077,30 @@ contain zero NEW and remain epoch 2; zero retirement events / Adaptive fallback.
 Returning anchors retain exact keys and numbers. No new research or lifecycle change
 is needed for this gate. Capacity eviction/different-ID rejection remain automated,
 not separately induced real-machine tests. Phase 6 remains IN PROGRESS, PR #7 Draft.
+
+## D-038 — Pure layout/DPI transitions suspend live-edge eligibility
+
+Phase 6 real cross-DPI acceptance exposed a narrow integration defect: the known
+logical tail survived 96→144 DPI reconciliation, but its stored raw fingerprint
+prevented stable-layout eligibility recovery. Subsequent real Remote messages were
+History, so Jev/HUD correctly did not run. This is not a general reopening of Phase 4.5.
+
+Save same-epoch live-tail intent only when an established conversation is already
+at its live edge before an actual dimensions/ROI/DPI transition. After the existing
+layout stability gate, re-arm only when that exact reconciled logical ID is still
+the structurally full visible chronological tail. Refresh its current crop fingerprint;
+cross-DPI raw-pixel equality is not required. Recovery authorizes the next observation,
+never retroactively emits NEW during transition. Unchanged stable frames can recover
+using the already reconciled snapshot without repeated detection/OCR.
+
+History scrolling and transitions started away from the live edge cannot create this
+evidence. Pending switches, epoch changes, invalid baseline, missing/different tail,
+or a structurally partial stable tail abandon it. Repeated unstable configuration
+changes retain the original intent but restart stability. Append matching, identity
+thresholds, history reconciliation, OCR/trust, Jev and HUD remain unchanged.
+
+The public ObserveAsync regression failed on old code and passes with this correction.
+Windows format/verify and full build passed (0 warnings/errors); all 355 .NET tests
+passed, including 183 Observer tests (7 new cases). No skipped tests. Automated
+evidence covers repeated transitions and negative recovery gates. Real
+96→144→96→144 with one Remote append after each stabilization remains a manual gate.
