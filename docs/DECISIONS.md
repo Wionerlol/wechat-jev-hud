@@ -1146,4 +1146,28 @@ Remote m11 was LiveNew exactly once. Both requests succeeded once and rendered
 same-key Ready HUDs, with zero Adaptive fallback. m11 was Expanded ordinal 2 and
 m10 Compact ordinal 1. Capture audit verified both configurations. No exact-ID
 rearm requirement was bypassed. This narrow integration gate is complete;
-Phase 6 remains IN PROGRESS pending its separate final acceptance gates.
+At this correction's closeout Phase 6 remained IN PROGRESS; final acceptance below
+subsequently completed its separate remaining gates.
+
+## D-040 — Phase 6 V0 final acceptance and presentation freeze
+
+2026-10-02: user completed and accepted final human review. Phase 6 is PASS for V0.
+D-036 Rail and D-037 offscreen-retained bounded semantic session remain the product
+model: newest Expanded, prior Compact/overflow, exact same-ID anchor reattachment,
+stable per-epoch ordinals. Earlier scroll-out retirement/no-resurrection is superseded
+only for HUD lifetime, not Observer identity guarantees. D-038/D-039 corrections are
+accepted and frozen; no further perception research or semantic changes are needed.
+
+Real evidence confirms Self push without semantic scheduling, deliberate epoch
+switch clearing/reset, real Alt-Tab/minimize restoration, correct two-direction DPI
+association, no focus theft/click interception, and actual marker-free RenderWindow
+capture. Final five Remote targets each had one NEW/request/keyed Ready, stable
+ordinals 3–7, latest Expanded, zero Adaptive fallback. Five-sample detection-to-Ready
+median/max 656.9/923.7ms; TypeSafe roundtrip 398.2/627.8ms. Full native suite 357 PASS,
+0 failed/skipped; format/build PASS. Details and timing limitations in PHASE6_HUD.md.
+
+Accepted historical re-identification, clipped-width false negatives, residual OCR
+risk, limited quotes, probabilistic uncalibrated judgments and bounded queue skips
+remain limitations, not new guarantees. No raw chat/API persistence, replies,
+input injection, mouse interaction or profiles introduced. PR #7 becomes Ready for
+review; merge remains a separate user decision. Stop Phase 6 work here.

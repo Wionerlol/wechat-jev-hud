@@ -875,7 +875,9 @@ reset on confirmed epoch change. Default HUD-only capacity 25 evicts oldest sequ
 epoch change, reset and shutdown clear retained state. Observer's bounded buffer and
 later current-view trust do not control accepted semantic-result lifetime. Scheduling
 eligibility remains unchanged. Temporary foreground/minimize/layout/pending-identity
-states hide the whole scene without retirement. No persistence. Phase 6 is not yet PASS.
+states hide the whole scene without retirement. No persistence. Phase 6 is PASS for
+V0 following native and human acceptance on 2026-10-02. See PHASE6_HUD.md for final
+evidence and bounded historical-ID/OCR/model limitations; no interaction or reply features.
 
 ### Window behavior
 

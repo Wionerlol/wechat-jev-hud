@@ -1,7 +1,9 @@
 # Phase 6 — Anchored HUD
 
-Status: **IN PROGRESS**, not PASS. Branch `codex/phase-6-hud`, base/target `main`.
-The real dual-monitor Demo and Remote WeChat → Jev → HUD gates require human operation.
+Status: **PASS for V0**, 2026-10-02. Branch `codex/phase-6-hud`, base/target `main`.
+Final native and human gates passed; PR #7 Ready for review, no automatic merge.
+Pending statements in the historical investigation sections below describe earlier
+states and are superseded by this final acceptance record.
 Phase 4.5 perception and Phase 5 inference algorithms remain frozen, except the
 explicitly authorized D-038 eligibility recovery and D-039 previous-visible occurrence
 continuity around pure layout/DPI transitions. Ordinary history matching remains frozen.
@@ -17,7 +19,7 @@ can re-arm eligibility for the next append. This does not modify append predicat
 Opt-in HUD append diagnostics also emit redacted `live_edge_transition` records:
 State, Epoch, SavedTailId, CurrentTailId, LayoutStableCount and Reason.
 The original reverse-direction retest exposed the D-039 occurrence defect below;
-the corrected two-direction gate has passed. Phase 6 is not PASS.
+the corrected two-direction gate has passed and final Phase 6 acceptance is complete.
 D-039 corrects mixed-cache history anchoring during a pure rerender only. It requires
 known pre-transition live-tail intent, accepted identity, unique visual transform
 anchors and bottom-preserving geometry, then gives previous-visible ordered IDs
@@ -338,7 +340,50 @@ until those presentation gates pass.
 
 No Phase 6 PASS/PR readiness until all required gates have real evidence.
 
-## Sources / accepted limitations
+## Final native / human acceptance — 2026-10-02
+
+User confirmed all final checks: correct latest/previous results and anchor numbers,
+Alt-Tab/minimize restoration, uninterrupted typing/clicking, real cross-monitor
+association. Four deliberate chat switches produced four epochs; sessions clear at
+confirmation and new epoch numbering restarts at 1. Self m33/m54 caused no analysis
+or semantic card; retained Remote keys/ordinals followed translated geometry.
+D-037 retention/reattachment and D-038/D-039 two-direction native gates are accepted.
+Final m56–m60 each produced one Remote LiveNew, one Jev Success and keyed Ready;
+ordinals 3–7 continued within epoch 8. Latest #7 Expanded; constrained rail used
+overflow rather than stale-result substitution. Adaptive fallback stayed zero.
+
+Actual audit with real rail session: positive desktop marker control, RenderWindow
+exclusion, desktop exclusion, styles, physical bounds, actual foreground preservation,
+affinity and stable configuration all PASS. Unsupported desktop perception remains
+discarded. Latest native format/verify/build PASS (0 warnings/errors); 357 tests
+PASS, 0 failed/skipped, including 185 Observer and 56 Overlay. No code changed after
+that validation; closeout edits are documentation only.
+
+Final five Remote samples, milliseconds (median / max):
+
+| Stage | Median | Max |
+| --- | ---: | ---: |
+| capture | 12.61 | 20.04 |
+| change detection | 9.66 | 9.76 |
+| bubble detection | 4.78 | 5.55 |
+| OCR | 24.26 | 26.45 |
+| context build | 0.060 | 0.138 |
+| Jev queue wait | 0.045 | 0.082 |
+| TypeSafe roundtrip | 398.22 | 627.80 |
+| result mapping | 0.171 | 0.281 |
+| target-frame HUD layout | 0.075 | 0.598 |
+| HUD update | 0.471 | 0.570 |
+| HUD dispatch | 39.84 | 41.70 |
+| detected Remote → Ready | 656.94 | 923.70 |
+
+Sample count is 5 per row, not a latency guarantee. Detection-to-Ready excludes
+unknown time before the capture first detected the message. Target-frame
+hud_compose_ms was zero because composition happened on later result application;
+existing telemetry does not isolate that later composer from HUD update, so no
+standalone compose latency is claimed. Per-stage values are not additive across
+different observation/result/render frames. No semantic concurrency optimization.
+
+## Sources and retained limitations
 
 Consulted 2026-09-24: [Microsoft display affinity](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowdisplayaffinity),
 [extended styles](https://learn.microsoft.com/en-us/windows/win32/winmsg/extended-window-styles),

@@ -2,9 +2,9 @@
 
 This checkout implements accepted Phases 0–4 and **Phase 4.5 PASS for V0** production
 OCR runtime and **Phase 5 PASS** Jev integration (automated gates plus real synthetic
-Chinese TypeSafe smoke). **Phase 6 HUD is IN PROGRESS**: implementation and automated
-Windows tests are available; real capture-exclusion, dual-DPI and Remote-to-HUD
-manual acceptance remain required. Do not treat Demo as end-to-end acceptance.
+Chinese TypeSafe smoke). **Phase 6 HUD is PASS for V0** (2026-10-02): native Windows
+gates and real Remote-to-Rail, capture exclusion, dual-DPI and lifecycle acceptance
+passed. PR #7 is prepared for review, not automatically merged.
 
 Phase 6: [HUD architecture and manual test workflow](docs/PHASE6_HUD.md).
 
@@ -16,7 +16,9 @@ with `屏外` and no anchor; exact same-epoch logical-ID return restores the ori
 anchor number without rerunning Jev. Ordinals increase chronologically within the
 epoch, never renumber on scroll/layout. Default capacity 25 can be configured with
 `-MaxTrackedSemanticItems`. Real push-out/scroll-back/stable-number acceptance passed
-on `db897c8` (15 targets, no replay); remaining Phase 6 gates are still pending.
+on `db897c8` (15 targets, no replay); final human acceptance is complete. Latest
+suite: 357 .NET tests passed. Five final Remote samples had median/max detection-to-
+Ready latency 657/924ms; see the Phase 6 report for stage timings and limitations.
 Run `.\scripts\hud.ps1 -Demo` for synthetic cards (no OCR/API),
 `.\scripts\hud.ps1 -CaptureAudit` for a no-persistence capture-exclusion probe,
 or `.\scripts\hud.ps1 -Jev -HudDebug` to explicitly enable trusted-text uploads
@@ -262,8 +264,7 @@ raw/normalized accuracy, Paddle `rec_score`, Adaptive output, trust, CER,
 startup/warmup and request timings, fallbacks, polarity errors, and trusted-wrong count
 separate. Crops and reports remain gitignored.
 
-Phase 4.5 remains IN PROGRESS: final V0 observer smoke acceptance remains; further
-trust research is stopped. The historical input audit compared
+Phase 4.5 is PASS for V0; further trust research is stopped. The historical input audit compared
 the same detected bubble as a raw crop, a contrast-derived text ROI with safe padding,
 32/40/48 px text-band normalization using nearest/bicubic/Lanczos interpolation, and
 a conservative grayscale/background-normalized Lanczos variant. It does not use text

@@ -907,6 +907,34 @@ Create a small manually inspectable evaluation fixture set. The goal is not "100
 
 ## Phase 6 — Anchored HUD overlay
 
+**Final status: PASS for V0, 2026-10-02.** This final record supersedes pending
+status/checklists in the chronological implementation evidence below, not earlier
+phase evidence or accepted limitations. User confirmed all remaining human checks.
+
+- Native Windows format/verify and full build: 0 warnings/errors; latest implementation
+  `1d89664`, 357 .NET tests passed, 0 failed/skipped (185 Observer, 56 Overlay,
+  40 TypeSafe, 63 OCR, 6 Vision, 5 Windows, 2 Capture). Documentation-only closeout
+  reuses this same-code evidence; no OCR benchmarks or Observer research repeated.
+- Real Remote targets receive keyed Pending→Ready; Self m33/m54 receive no Jev/HUD.
+  m32 retains ordinal 1 while Self push updates its anchor. Latest rail never uses
+  stale older results; D-037 retained session/ordinal/exact-ID return gate accepted.
+- User confirmed four chat switches correspond to four epoch changes. Pending hides,
+  confirmed epochs clear Rail; Bootstrap produces no semantic target; new epoch
+  targets restart at ordinal 1. No old session/result resurrection.
+- Real Alt-Tab/minimize restoration preserves keys/results/ordinals and does not
+  replay Jev. User confirms focus, typing and click-through, restoration and correct
+  cross-DPI anchor association. D-038/D-039 native identity/rearm gates accepted.
+- Real audit: VisiblePositiveControl, RenderExcluded, DesktopExcluded, styles,
+  physical bounds, foreground preservation, affinity and configuration stability all
+  true. Only verified RenderWindow is processed; desktop fallback remains fail-closed.
+- Final five Remote m56–m60: one LiveNew and one Success/Ready each, ordinals 3–7,
+  latest #7 Expanded, older items safely compact/overflow; epoch 8 unchanged,
+  zero Adaptive fallback. No raw text, payload, key or screenshots persisted by default.
+- Five-sample median/max detection-to-Ready: 656.9/923.7ms; HTTP 398.2/627.8ms.
+  Per-stage measurements and instrumentation limitations: PHASE6_HUD.md.
+
+PR #7 may move to Ready; no automatic merge or subsequent feature work authorized.
+
 ### D-039 cross-DPI previous-visible occurrence correction
 
 - [x] Recorded-vector/geometry mixed-cache replay reproduced m8→History m9 before
