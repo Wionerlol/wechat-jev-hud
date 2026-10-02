@@ -2,7 +2,27 @@
 
 This checkout implements accepted Phases 0–4 and **Phase 4.5 PASS for V0** production
 OCR runtime and **Phase 5 PASS** Jev integration (automated gates plus real synthetic
-Chinese TypeSafe smoke). The Phase 6 HUD is not implemented.
+Chinese TypeSafe smoke). **Phase 6 HUD is PASS for V0** (2026-10-02): native Windows
+gates and real Remote-to-Rail, capture exclusion, dual-DPI and lifecycle acceptance
+passed. PR #7 is prepared for review, not automatically merged.
+
+Phase 6: [HUD architecture and manual test workflow](docs/PHASE6_HUD.md).
+
+Current presentation is a shared semantic rail: newest target Expanded, two prior
+Compact items, overflow count, and small numbered anchors beside Remote bubbles.
+Narrow-window density degrades automatically; click-through/no-activate behavior is
+unchanged. Semantic entries stay in a bounded in-memory HUD session when offscreen,
+with `屏外` and no anchor; exact same-epoch logical-ID return restores the original
+anchor number without rerunning Jev. Ordinals increase chronologically within the
+epoch, never renumber on scroll/layout. Default capacity 25 can be configured with
+`-MaxTrackedSemanticItems`. Real push-out/scroll-back/stable-number acceptance passed
+on `db897c8` (15 targets, no replay); final human acceptance is complete. Latest
+suite: 357 .NET tests passed. Five final Remote samples had median/max detection-to-
+Ready latency 657/924ms; see the Phase 6 report for stage timings and limitations.
+Run `.\scripts\hud.ps1 -Demo` for synthetic cards (no OCR/API),
+`.\scripts\hud.ps1 -CaptureAudit` for a no-persistence capture-exclusion probe,
+or `.\scripts\hud.ps1 -Jev -HudDebug` to explicitly enable trusted-text uploads
+and the real HUD. Keep WeChat foreground. The controller's Stop button exits cleanly.
 
 Phase 5: [API contract, architecture, tests and setup](docs/PHASE5_JEV.md).
 Run `.\scripts\jev-smoke.ps1` for six non-sensitive Chinese examples after configuring
@@ -61,7 +81,9 @@ dotnet run --project src/WeChatJevHud.Diagnostics -- `
 This explicitly exports two title-region PNGs and structured distances for visual
 inspection. Do not commit them. A same-title comparison alone is not switch acceptance.
 
-- `WeChatJevHud.App`: WPF diagnostic UI that refreshes HWND/process/title/class, desktop bounds, monitor, and DPI every 500 ms. Its button saves and previews one frame only when explicitly pressed.
+- `WeChatJevHud.App`: Phase 6 HUD/controller runtime; original manual capture UI remains available via `--capture-debug`.
+- `WeChatJevHud.Overlay`: pure composition/layout/lifecycle plus one no-activate WPF host.
+- `WeChatJevHud.Runtime`: shared unchanged perception construction used by App and Diagnostics.
 - `WeChatJevHud.Diagnostics`: command-line window diagnostics, explicit capture, offline fixture detection, and capture-plus-detection.
 - `WeChatJevHud.Vision`: capture-relative chat ROI location, `Remote`/`Self`/`Unknown` text-bubble detection, heuristic detection scores, timing, and annotated debug rendering.
 - Replaceable interfaces for window tracking, capture, bubble detection, OCR, Jev, and overlay rendering.
@@ -242,8 +264,7 @@ raw/normalized accuracy, Paddle `rec_score`, Adaptive output, trust, CER,
 startup/warmup and request timings, fallbacks, polarity errors, and trusted-wrong count
 separate. Crops and reports remain gitignored.
 
-Phase 4.5 remains IN PROGRESS: final V0 observer smoke acceptance remains; further
-trust research is stopped. The historical input audit compared
+Phase 4.5 is PASS for V0; further trust research is stopped. The historical input audit compared
 the same detected bubble as a raw crop, a contrast-derived text ROI with safe padding,
 32/40/48 px text-band normalization using nearest/bicubic/Lanczos interpolation, and
 a conservative grayscale/background-normalized Lanczos variant. It does not use text

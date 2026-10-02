@@ -851,17 +851,33 @@ Never:
 
 The code, not Jev, decides what to display.
 
-Example policy:
-- only show a Noul row when probability is far enough from indecision to be useful;
-- always allow debug mode to show raw outputs;
-- show at most a few high-signal rows in collapsed HUD;
-- expanded HUD may show all configured judgments.
+Phase 6 uses fixed presentation without probability thresholds (D-036). The Expanded
+rail item shows all eight judgments: selected speech act and its option probability,
+five Noul yes probabilities, urgency and textual emotional intensity weighted Scores
+/3. Compact prior items show selected speech act, expects_response and
+references_prior_context. Choice/Score distribution confidence never substitutes for
+these values. Distributions remain available in the optional diagnostic controller.
+Earlier thresholds and four-row/card-adjacent presentation suggestions are superseded.
 
 Avoid turning several weak signals into a strong psychological claim.
 
 ---
 
 ## 14. Overlay/HUD
+
+Current implementation/acceptance contract: [PHASE6_HUD.md](PHASE6_HUD.md), D-037.
+One transparent WPF HWND, a shared semantic rail and small per-message anchors, local DIP layout,
+physical desktop SetWindowPos and epoch+message identity. Semantic items survive
+viewport absence as OffscreenRetained with no anchor. Exact same-epoch logical-ID
+return restores geometry; different-ID history never inherits semantic results.
+DisplayOrdinal is assigned once at scheduling, monotonically within the epoch,
+reset on confirmed epoch change. Default HUD-only capacity 25 evicts oldest sequence;
+epoch change, reset and shutdown clear retained state. Observer's bounded buffer and
+later current-view trust do not control accepted semantic-result lifetime. Scheduling
+eligibility remains unchanged. Temporary foreground/minimize/layout/pending-identity
+states hide the whole scene without retirement. No persistence. Phase 6 is PASS for
+V0 following native and human acceptance on 2026-10-02. See PHASE6_HUD.md for final
+evidence and bounded historical-ID/OCR/model limitations; no interaction or reply features.
 
 ### Window behavior
 
@@ -876,34 +892,40 @@ Requirements:
 
 ### Anchoring
 
-Default remote-message placement:
+Message anchoring and semantic detail placement are separate (D-036). A small neutral
+numbered 20 DIP anchor follows each active Remote BubbleRect, normally to its right,
+and links to the same ordinal/key in the shared rail. No full detail card must fit
+beside its source. Anchors and rail must avoid every visible message rectangle and
+stay inside the usable chat ROI; impossible geometry fails closed with diagnostics.
 
-```text
-hud.left = remoteBubble.right + gap
-hud.top  = remoteBubble.top
-```
-
-Use collision resolution if there is insufficient space.
-
-The current WeChat layout has substantial empty space to the right of remote bubbles, which is the preferred HUD area.
+`HudPresentationPolicy` orders independent targets by creation sequence, newest first,
+not by Y or completion time. `OverlayLayoutEngine` returns a `HudRailLayout` with
+presentation density, keyed rail items, anchors, latest key and overflow count.
+One right-edge strip is evaluated at 280/220 DIP Expanded widths, then 200/160 DIP
+Compact widths, then a tiny 64×28 DIP counter. Safe vertical intervals are derived
+from all visible bubble/anchor geometry with a 16 DIP ROI margin and 4 DIP clearance.
+This replaces per-card nearby-anchor/vertical-shift searching, not its tolerance.
 
 ### Collapsed view
 
-Initially show at most 2–4 concise rows, for example:
+The newest active target receives Expanded when safe; up to two prior active items
+receive Compact (configurable), remaining items use `+N`. Compact is a 56 DIP block:
 
 ```text
-询问/确认       88%
-期待回应         91%
-依赖前文         79%
+2 · 询问 88%
+回应91% · 前文79%
 ```
 
 ### Expanded view
 
-May show:
-- all judgment outputs;
-- raw probabilities;
-- OCR confidence;
-- pipeline timing in debug mode.
+Expanded shows all jev-v0.1 judgments grouped as Primary, Conversation and Intensity
+(280 DIP height with default typography). Pending uses 48 DIP height. No interactive
+expansion/hover is added. If geometry requires degradation, newest remains first:
+Expanded → Compact → `Jev · N` plus anchors. Prior details degrade before newest;
+an older successful result must never be the apparent latest when a newer active
+result exists. No semantic prompts, results, thresholds or eligibility change.
+If even a counter cannot safely fit, only safe anchors remain and newest/count are
+explicit diagnostics. Typed results remain separately keyed in memory.
 
 No generated reply is required for V0.
 

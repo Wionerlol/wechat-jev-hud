@@ -262,6 +262,21 @@ Jev unavailable
 
 ## 12. Visual reference
 
+Current Phase 6 presentation (D-036): two close Remote messages keep separate keyed
+small anchors. The newer item is Expanded in one shared semantic rail; the older is
+Compact. Five active targets use one Expanded, two Compact and `+2` overflow when
+space permits. Narrow panes degrade the newest to Compact or a tiny `Jev · N`
+indicator; an older result must never masquerade as the latest. Expanded retains all
+eight judgments, with Scores displayed as `/3`, not percentages. This supersedes
+the earlier full-card-beside-every-bubble examples.
+
+D-037: targets scheduled as #1/#2/#3 keep those numbers when #1 scrolls above or #3
+below the viewport. Their rail entries remain (`屏外`), but no offscreen anchor is
+drawn. Exact same logical ID returning restores its original number, not a new Jev
+request. A visually similar different-ID historical bubble never inherits a result.
+The newest tracked target stays primary even when offscreen; 25 retained items can
+appear as #25 Expanded, #24/#23 Compact, +22. Epoch switch clears/reset numbers.
+
 See:
 
 `docs/assets/wechat-dark-layout-reference.png`

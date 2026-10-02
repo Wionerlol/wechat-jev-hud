@@ -907,6 +907,154 @@ Create a small manually inspectable evaluation fixture set. The goal is not "100
 
 ## Phase 6 — Anchored HUD overlay
 
+**Final status: PASS for V0, 2026-10-02.** This final record supersedes pending
+status/checklists in the chronological implementation evidence below, not earlier
+phase evidence or accepted limitations. User confirmed all remaining human checks.
+
+- Native Windows format/verify and full build: 0 warnings/errors; latest implementation
+  `1d89664`, 357 .NET tests passed, 0 failed/skipped (185 Observer, 56 Overlay,
+  40 TypeSafe, 63 OCR, 6 Vision, 5 Windows, 2 Capture). Documentation-only closeout
+  reuses this same-code evidence; no OCR benchmarks or Observer research repeated.
+- Real Remote targets receive keyed Pending→Ready; Self m33/m54 receive no Jev/HUD.
+  m32 retains ordinal 1 while Self push updates its anchor. Latest rail never uses
+  stale older results; D-037 retained session/ordinal/exact-ID return gate accepted.
+- User confirmed four chat switches correspond to four epoch changes. Pending hides,
+  confirmed epochs clear Rail; Bootstrap produces no semantic target; new epoch
+  targets restart at ordinal 1. No old session/result resurrection.
+- Real Alt-Tab/minimize restoration preserves keys/results/ordinals and does not
+  replay Jev. User confirms focus, typing and click-through, restoration and correct
+  cross-DPI anchor association. D-038/D-039 native identity/rearm gates accepted.
+- Real audit: VisiblePositiveControl, RenderExcluded, DesktopExcluded, styles,
+  physical bounds, foreground preservation, affinity and configuration stability all
+  true. Only verified RenderWindow is processed; desktop fallback remains fail-closed.
+- Final five Remote m56–m60: one LiveNew and one Success/Ready each, ordinals 3–7,
+  latest #7 Expanded, older items safely compact/overflow; epoch 8 unchanged,
+  zero Adaptive fallback. No raw text, payload, key or screenshots persisted by default.
+- Five-sample median/max detection-to-Ready: 656.9/923.7ms; HTTP 398.2/627.8ms.
+  Per-stage measurements and instrumentation limitations: PHASE6_HUD.md.
+
+PR #7 may move to Ready; no automatic merge or subsequent feature work authorized.
+
+### D-039 cross-DPI previous-visible occurrence correction
+
+- [x] Recorded-vector/geometry mixed-cache replay reproduced m8→History m9 before
+      the narrow correction; after it the tail/timeline remain unchanged.
+- [x] Layout-time scroll rejection and existing history/append/D-038 suites pass.
+- [x] Windows format/verify and full build (0 warnings/errors); all 357 .NET tests
+      passed, 0 failed/skipped, including 185 Observer tests.
+- [x] Real 144→96 preserves complete previous-visible IDs before sending; subsequent Remote
+      is one LiveNew, one Jev request and one keyed Ready HUD.
+- [x] Real 96→144 passes the same pre-send identity and subsequent-message gate.
+
+Native evidence on 2026-10-02, implementation commit `1d89664`: epoch 2 stayed
+unchanged. At 144→96, m3–m6 retained ordered occurrences and saved tail m6 re-armed
+after two stable observations. The larger visible history area discovered three
+older History entries before those occurrences; none replaced the saved tail.
+Remote m10 then emitted exactly once (`anchored_translated_suffix`, -97px), with
+semantic_ready=true, one successful Jev request and same-key Pending→Ready render.
+At 96→144, all six visible occurrences retained IDs, zero History IDs were created,
+and tail m10 re-armed. Remote m11 emitted once (-84px), with one successful Jev
+request and Ready ordinal 2 Expanded; m10 remained ordinal 1 Compact. Both capture
+configurations verified RenderWindow; Adaptive fallback stayed zero. OCR durations
+were 20.1/27.1ms and TypeSafe roundtrips 766.1/665.5ms respectively. This records
+native trace evidence; it does not replace remaining Phase 6 visual acceptance.
+
+D-038's exact tail-ID fail-closed requirement remains unchanged. No Phase 6 PASS yet.
+
+### D-038 narrow cross-DPI live-edge integration correction
+
+- [x] Old-code regression reproduced: retained logical tail with changed crop
+      fingerprint leaves the first stable post-transition append as History.
+- [x] Same-epoch exact reconciled full tail can re-arm after layout stability;
+      no append matcher, OCR/trust, history or HUD algorithms changed.
+- [x] Windows format/verify, full build (0 warnings/errors), full .NET suite:
+      355 passed, 0 failed/skipped; Observer 183, including 7 new regression cases.
+- [ ] Real 96→144, 144→96, 96→144: after each stable re-arm, one Remote
+      message must be LiveNew exactly once, with one Jev schedule and HUD item.
+
+This is an authorized narrow integration correction, not a reopening of Phase 4.5.
+The failed reverse-direction gate was subsequently repaired and passed with D-039
+above. Phase 6 remains IN PROGRESS; PR #7 stays Draft pending its remaining gates.
+
+**Status: IN PROGRESS — implementation available; native/manual acceptance pending.**
+Detailed architecture, commands and evidence: [PHASE6_HUD.md](PHASE6_HUD.md), D-033.
+
+- [x] Code-owned all-eight-judgment Expanded / concise Compact composition, no model thresholds (D-036).
+- [x] Pure coordinate/layout/lifecycle tests, keyed by epoch + message ID.
+- [x] One real WPF HWND: native automated styles/no-activation/position/hit-test checks.
+- [x] Actual WeChat capture-exclusion positive control and marker-free captures at 144/96 DPI.
+- [x] Post-fix human typing-focus, Alt-Tab and minimize/restore verification.
+- [ ] Human click-through verification (native hit-test checks passed).
+- [x] Demo move/resize/150%↔100% DPI verification; automatic recovery without restart.
+- [ ] Real Remote → trusted OCR → Jev → Pending/Ready HUD with exact association.
+- [x] Retained semantic session: push-out / scroll-out / exact-ID scroll-back / stable numbering (D-037).
+- [ ] A→B→A, minimize/restore matrix.
+- [ ] Live per-stage and total latency recorded.
+- [x] Full Windows format/build/test gates recorded for D-037: 348 .NET tests passed,
+  zero failures/skips; build zero warnings/errors.
+
+Historical: 36 focused Windows Overlay tests passed, including capture-audit lifecycle and
+two-message real-geometry layout regressions.
+User confirmed both monitor-transition recoveries and all three focus/visibility
+regressions on `afc8521`; logs show Verified on DISPLAY5/96 and DISPLAY1/144 with
+all pixel safety evidence passing. No Phase 6
+PASS claim follows from Demo or HWND style configuration alone. Perception/TypeSafe
+algorithms remain frozen; private artifacts stay gitignored. PR must remain Draft.
+
+2026-10-01 real two-message gate remains blocked pending corrected retest:
+the newer Jev Success previously had no Ready render while older values stayed
+visible. Private real geometry replay and deterministic regression reproduced
+the layout omission (red before/green after bounded nearby-right placement).
+Per-HudKey debug traces cover Schedule/Observe/Apply/display gate/layout/mailbox/
+Canvas. The initial single-message E2E path passed, but does not substitute for
+this two-message regression or the remaining lifecycle matrix.
+
+D-036 presentation redesign supersedes per-message full-card placement and collision
+tuning. One shared right-side rail gives newest target Expanded, up to two previous
+Compact and remaining overflow; keyed small bubble anchors follow geometry. Narrow
+space degrades density, never displays an old result as the apparent latest. Expanded
+retains all eight unchanged judgments and primitive-specific values. Observer/OCR/
+eligibility/TypeSafe/capture safety/lifecycle remain frozen. Automated tests cover
+real short-tail and prior two-message geometry, 96/144 DPI, one/two/three/five targets,
+new result association, safe containment, counter-only fallback and no resurrection.
+
+Required next manual gate ONLY: two Remote messages approximately one second apart,
+then three/five rapid short Remote messages. Confirm latest result Expanded (or explicit
+narrow-window density degradation), prior Compact/overflow, correct keyed anchors,
+no stale first-result-only scene. Do not resume scroll/switch matrix until this passes.
+Phase 6 remains IN PROGRESS and PR #7 Draft.
+
+D-036 automated evidence: 46 Overlay tests plus 292 unchanged-module tests passed
+on native Windows; format verification and full build passed (zero warnings/errors).
+This is not real rail visual acceptance.
+
+D-036 real rail evidence: user confirmed newest Expanded and previous Compact;
+redacted native 96-DPI log verifies m11/m12 distinct keys, one NEW and accepted HUD
+schedule each, Success→Apply→Ready, zero Adaptive fallback. Ready latency samples
+981/642 ms; m12 shows its own request judgment rather than stale m11 question values.
+Rapid-message presentation was subsequently reported working. D-037 now supersedes
+the earlier no-resurrection gate, not frozen Observer identity or capture safety.
+
+D-037 required manual gate: early items pushed above viewport remain retained;
+scroll newest items below viewport preserves latest rail item as `屏外`; exact-ID
+scroll-back restores original anchor numbers with zero Jev requests. Different-ID
+historical associations must never inherit results. Capacity/epoch/reset retire only.
+Do not claim this real gate passed based on automated tests.
+
+D-037 native Windows gates: format + verify passed; full build zero warnings/errors;
+348 .NET tests passed, zero failures/skips (Overlay 56, other suites 292). Two new
+behavioral regressions failed on the prior implementation before the fix. No OCR,
+Jev, Observer, identity or capture-safety algorithm changed.
+
+D-037 real manual gate PASS on `db897c8`, 2026-10-01, DISPLAY5/96 DPI. User reports
+no number reset/result disappearance. Log verifies 15 epoch-2 targets (ordinals 1..15),
+one accepted schedule / Success Apply / Ready render each, all exact keys transitioning
+Onscreen -> OffscreenRetained -> Onscreen without ordinal changes. Newest #15 remains
+Expanded while offscreen; returning anchors keep their numbers. Following the final
+send: 29 changed observations, zero NEW, epoch 2 unchanged, zero retirement events
+and zero Adaptive fallback. This passes only this presentation lifecycle gate, not
+all remaining Phase 6 acceptance. No raw chat text or screenshots exported.
+
 ### Goal
 
 Show Jev judgments beside the corresponding remote message.
@@ -914,7 +1062,7 @@ Show Jev judgments beside the corresponding remote message.
 ### Acceptance
 
 - [ ] Transparent companion overlay exists independently of WeChat.
-- [ ] HUD anchors to the detected remote bubble, normally to its right.
+- [ ] Small keyed anchors follow Remote bubbles; shared rail represents newest/Compact/overflow.
 - [ ] HUD does not cover the source message in the normal reference layout.
 - [ ] Move/resize WeChat -> HUD follows.
 - [ ] Move WeChat between laptop/external monitor -> HUD remains correctly aligned.
@@ -922,7 +1070,7 @@ Show Jev judgments beside the corresponding remote message.
 - [ ] Scroll -> HUD reconciles/repositions/hides stale anchors.
 - [ ] Minimize/hide WeChat -> HUD hides.
 - [ ] Default behavior avoids leaving the HUD floating over unrelated foreground apps.
-- [ ] Collapsed HUD shows only a few concise judgments.
+- [ ] Expanded rail shows all eight judgments; Compact prior items stay concise; narrow layout degrades safely.
 - [ ] Debug-expanded view can show timings plus distinct detection scores, OCR confidence, and Jev probability/confidence.
 - [ ] Overlay does not contaminate its own capture path.
 

@@ -929,3 +929,245 @@ real API with synthetic Chinese and failure/stale isolation with deterministic f
 not a fresh live-WeChat-to-Jev manual run or universal semantic correctness. CJK
 accuracy limitations, bounded queue skips, alias movement, omitted unverified quotes
 and inherited V0 OCR risk remain explicit. Phase 6 is not implemented.
+
+## D-033 — Phase 6 separates spatial presentation from frozen perception/semantics
+
+Phase 6 is authorized after Phase 5 merged. Overlay consumes typed in-memory
+results; no console parsing, question changes or model thresholds. Four deterministic
+rows retain selected Choice probability, Noul yes probabilities, and weighted Score.
+Chinese labels are code-owned. Optional debug controller retains all eight judgments.
+
+One transparent WPF host uses NOACTIVATE/TRANSPARENT/TOOLWINDOW, no taskbar entry,
+physical SetWindowPos with no activation and current-monitor DPI-local content.
+A latest-wins mailbox separates UI updates from background perception. Native foreground,
+visibility/bounds/DPI checks hide stale scenes independently of OCR/network latency.
+
+Cards exist only after successful queueing of trusted Remote LiveNew. Epoch+ID binds
+Pending/Ready results, not latest bubble position. Two changed observations missing a
+target retire it permanently; foreground/minimize/layout/pending identity only hide.
+Confirmed epoch changes clear old items. Retired history cannot resurrect semantic
+cards through best-effort historical ID reassociation. Placement avoids source/other
+bubbles and cards; impossible placements hide rather than cover unrelated desktop.
+
+Capture safety is fail-closed: each runtime HWND/monitor/DPI configuration requires a native
+visible-marker positive-control audit and a marker-free RenderWindow sample before
+perception begins. The same audit tests desktop capture exclusion, but desktop fallback
+frames are always discarded in HUD mode regardless of API success. No image removal
+heuristics or saved frames. WDA_EXCLUDEFROMCAPTURE is defense-in-depth, not proof by itself.
+
+Only production object construction was extracted to Runtime for App/Diagnostics;
+Observer, OCR, detector, trust, identity and TypeSafe implementations are unchanged.
+Phase 6 manual gates remain open; no PASS based on deterministic tests or Demo alone.
+
+Cross-monitor audit correction: foreground preservation means HWND equality only,
+not unchanged geometry/DPI. Audit authorization is keyed by HWND/render HWND,
+capture bounds, monitor and DPI, requires two equivalent observations and fresh
+post-audit validation. Transient configuration/foreground changes hide and retry
+after stability; stable safety failures suppress retries on that configuration only.
+Pixel exclusion remains authoritative and desktop fallback remains forbidden.
+
+## D-034 — Nearby right anchors preserve newest-result priority in constrained HUD layout
+
+Historical layout approach; superseded by D-036. Regression evidence is retained.
+
+A real two-message run produced Success for both keys but continued displaying
+the older result. Existing logs lacked Apply/gate diagnostics. A private geometry
+replay independently reproduced a concrete layout failure: the newer 113-pixel
+Remote bubble's right-anchored 136-DIP card overlapped a preceding 127-pixel bubble
+by 4 pixels after moving upward to fit the viewport; its left fallback overflowed.
+The newer card was dropped while the older card could fit.
+
+Keep preferred placement and newest-first selection; add only bounded nearby right
+anchors at adjacent bubble edges, up to 20 DIPs outward. Preserve ROI containment,
+all bubble/card collision checks and the visible-card cap. The observed successful
+alternative moves 14 DIPs outward at 96 DPI. The deterministic regression requires
+the newest successful visible key in the final scene, even if only one card fits.
+Lifecycle/Apply/semantic filtering remain behaviorally unchanged; opt-in per-key
+diagnostics now identify where any card is rejected. Frozen perception, capture
+audit, DPI/style behavior and TypeSafe contracts remain unchanged. Phase 6 stays
+IN PROGRESS until real acceptance; the corrected two-message retest is pending.
+
+## D-035 — Compact two-row HUD for consecutive and short Remote messages
+
+Historical intermediate shape; superseded by D-036.
+
+The user requested a shape change after real chat diagnostics showed successful
+Jev/Apply results being hidden by layout collisions. A short 57-pixel tail bubble
+following a 225-pixel bubble could not fit the 136-DIP-high Ready card near the
+viewport bottom, despite the bounded right-anchor alternatives from D-034.
+
+Use a 300 × 64 DIP Ready card with the same four judgments in a row-major 2×2
+grid, no separate Ready heading; pending remains 48 DIP high. Do not change
+judgments, numerical mappings, identity/lifecycle, capture safety or perception.
+Keep existing collision/containment checks and newest-first policy. The real
+geometry regression failed before this change and passes at 96/144 DPI afterward;
+the prior adjacent-message regression now fits both cards. Narrow windows may
+still require hiding unsafe cards. Manual visual acceptance remains outstanding.
+
+## D-036 — Bubble anchors and shared density-aware semantic rail
+
+Lifecycle/ordinal portions are superseded by D-037; rail geometry and numeric mappings remain.
+
+The user rejects further collision-tolerance tuning: consecutive short messages cannot
+each own a large adjacent detail card. Separate a 20 DIP keyed bubble-local anchor
+from one shared rail inside the usable chat ROI. Independent epoch/message results
+and all accepted lifecycle, capture, perception and semantic contracts stay unchanged.
+
+Policy orders targets by creation sequence. Default is newest Pending/Ready Expanded,
+two prior Compact, then overflow count. Expanded displays all eight unchanged
+jev-v0.1 judgments grouped into Primary/Conversation/Intensity; Compact retains
+speech act, response and prior-context values. Choice uses selected probability,
+Noul uses yes probability, Score uses weighted value /3. No confidence substitution,
+display thresholds, interaction or burst re-analysis.
+
+Geometry owns one right-side strip: provisional 280/220 DIP Expanded widths,
+200/160 DIP Compact, then a tiny Jev/count indicator. Visible bubble and marker
+rectangles define safe vertical intervals; margins/clearance remain strict. Latest
+cannot be silently displaced by old values: reduce prior details, then latest density,
+and explicitly expose overflow/geometry failure. All positions are capture-relative
+converted to current-DPI DIPs. If no safe counter fits, only safe anchors remain.
+
+This supersedes D-007's full-card adjacency assumption and D-033–D-035's four-row /
+per-card geometry, not their message association, no-resurrection, window or capture
+safety rules. Tests cover one/two/three/five targets, narrow degradation, real short
+tail geometry, DPI, exact numeric mappings, movement, reverse completion order and
+retirement. Manual two-message and three/five rapid-message presentation gates remain
+pending; do not proceed to the lifecycle matrix or mark Phase 6 PASS before them.
+
+## D-037 — Semantic HUD lifetime is independent of bubble visibility
+
+The user explicitly supersedes D-033/D-036's HUD-only scroll-out retirement /
+no-resurrection rule. A scheduled target belongs to an in-memory semantic session,
+not to a viewport. Absence sets OffscreenRetained, clears current anchor geometry,
+and retains presentation/result, sequence, last known bounds and display ordinal.
+The rail still prioritizes the newest tracked target and labels offscreen entries
+`屏外`; no inferred direction. Only exact same logical ID in the same epoch restores
+an anchor. Different-ID ambiguous history never inherits a result. This does not
+strengthen or change Phase 4.5's best-effort Observer identity guarantees.
+
+Assign ordinal once on successful HUD scheduling, chronological 1..N per epoch;
+layout copies it instead of deriving it from newest-first array position. Pending
+results may complete offscreen. Visibility, overflow, resize and result order do not
+renumber or rerun Jev. Trusted eligibility remains mandatory at scheduling, but
+display of an accepted result is independent of Observer State.Messages membership
+or its later current-view trust evidence; no uncertain text is newly submitted.
+
+Default MaxTrackedSemanticItems=25, configurable through HudLifecycle and
+`hud.ps1 -MaxTrackedSemanticItems`. Oldest sequence is evicted deterministically;
+late evicted results cannot recreate items. Epoch switch, explicit reset and shutdown
+clear the session; ordinal resets. Unavailable analyses stay bounded/hidden, without
+fabricated rows. The existing 2048-key per-epoch schedule dedupe cap remains; capacity
+eviction never permits rescheduling an old used ID. Diagnostic timing keys are pruned
+with eviction. No persistence, interaction or changes to frozen perception/Jev/capture.
+
+Old-code regressions were red for disappearance retention and chronological numbering;
+new tests cover push-out, scroll below/return, different-ID rejection, offscreen
+completion, capacity, overflow and epoch/reset. Real two-message D-036 run on 96 DPI
+rendered m11 Compact and newer m12 Expanded, each one NEW/schedule/Success, zero
+Adaptive fallback; observed capture-start-to-Ready 981/642 ms. User confirmed shape
+and rapid-message presentation.
+
+D-037 manual gate passed on `db897c8`, 2026-10-01, DISPLAY5/96 DPI. The user
+completed push-out / scroll-away / scroll-back and confirmed no number reset or lost
+result. Redacted log contains 15 distinct targets in epoch 2 (ordinals 1..15), each
+one accepted HUD schedule and successful Apply/Ready render. All 15 transition
+Onscreen -> OffscreenRetained -> Onscreen with unchanged ordinal. Latest #15 also
+renders Expanded while offscreen. After the final send, 29 changed observations
+contain zero NEW and remain epoch 2; zero retirement events / Adaptive fallback.
+Returning anchors retain exact keys and numbers. No new research or lifecycle change
+is needed for this gate. Capacity eviction/different-ID rejection remain automated,
+not separately induced real-machine tests. Phase 6 remains IN PROGRESS, PR #7 Draft.
+
+## D-038 — Pure layout/DPI transitions suspend live-edge eligibility
+
+Phase 6 real cross-DPI acceptance exposed a narrow integration defect: the known
+logical tail survived 96→144 DPI reconciliation, but its stored raw fingerprint
+prevented stable-layout eligibility recovery. Subsequent real Remote messages were
+History, so Jev/HUD correctly did not run. This is not a general reopening of Phase 4.5.
+
+Save same-epoch live-tail intent only when an established conversation is already
+at its live edge before an actual dimensions/ROI/DPI transition. After the existing
+layout stability gate, re-arm only when that exact reconciled logical ID is still
+the structurally full visible chronological tail. Refresh its current crop fingerprint;
+cross-DPI raw-pixel equality is not required. Recovery authorizes the next observation,
+never retroactively emits NEW during transition. Unchanged stable frames can recover
+using the already reconciled snapshot without repeated detection/OCR.
+
+History scrolling and transitions started away from the live edge cannot create this
+evidence. Pending switches, epoch changes, invalid baseline, missing/different tail,
+or a structurally partial stable tail abandon it. Repeated unstable configuration
+changes retain the original intent but restart stability. Append matching, identity
+thresholds, history reconciliation, OCR/trust, Jev and HUD remain unchanged.
+
+The public ObserveAsync regression failed on old code and passes with this correction.
+Windows format/verify and full build passed (0 warnings/errors); all 355 .NET tests
+passed, including 183 Observer tests (7 new cases). No skipped tests. Automated
+evidence covers repeated transitions and negative recovery gates. Real
+96→144→96→144 with one Remote append after each stabilization remains a manual gate.
+
+## D-039 — Previous-visible continuity before history search during pure layout rerender
+
+D-038's real 144→96 gate correctly failed closed when saved tail m8 was reassigned
+to the preceding bubble and its actual target became History m9. Do not bypass that
+tail-ID check. A fresh 144-DPI probe measured scale 2/3, one unique visual anchor,
+deltaY 44.667; tail→correct candidate cost .0093 versus preceding candidate 2.6852.
+That fresh session mapped correctly, excluding an unconditional scale=1 explanation.
+
+The failing case also had mixed-DPI complete-crop caches. Replaying recorded remote
+perceptual vectors/physical geometry with that cache history reproduced m8→m9.
+KnownHistoryWindow selects partial cached anchors; AlignHistory's intervening gap
+alignment ignores geometry cost and can select the first weakly compatible occurrence.
+This can reuse the wrong cached OCR before final reconciliation. The reconstruction
+uses opaque test text and synthesized pixel samples matching the real perceptual
+vectors, not private screenshot assets or OCR acceptance evidence.
+
+Only during a live-tail-authorized layout transition with accepted identity and
+mutually unique visual translation anchors, prefer immediately previous-visible
+ordered occurrence alignment. Require bottom-preserving viewport transformation,
+existing side/visual/trusted-text compatibility, scaled width/height and ROI-relative
+left/right placement and Y within two current-DPI DIPs of raster rounding. The
+measured pair differences are subpixel/~1px; no DPI scale prior is forced. Geometry
+never establishes identity alone. Same-DPI history scrolling, transitions started
+away from live edge, unresolved identity/switches and bottom-shifting scroll do not
+authorize this path. Ordinary history matching remains unchanged outside it.
+
+D-038 still independently requires exact same reconciled logical tail after stable
+layout. No append predicates, identity thresholds, OCR/trust, Jev or HUD changes.
+Automated replay asserts unchanged epoch/timeline, preserved tail, zero transition
+NEW, then one fresh post-stability append. Windows format/verify and full build
+passed (0 warnings/errors). All 357 .NET tests passed, 0 failed/skipped, including
+185 Observer tests; D-025, D-029/D-030 and D-038 regressions remain green.
+Native retest on 2026-10-02 (`1d89664`) passed both directions in epoch 2:
+144→96 retained complete previous-visible m3–m6 in order, re-armed saved tail m6,
+then Remote m10 was LiveNew exactly once. The expanded viewport discovered older
+history before the retained sequence, not a replacement tail placeholder.
+96→144 retained all six visible IDs, allocated zero History IDs and re-armed m10;
+Remote m11 was LiveNew exactly once. Both requests succeeded once and rendered
+same-key Ready HUDs, with zero Adaptive fallback. m11 was Expanded ordinal 2 and
+m10 Compact ordinal 1. Capture audit verified both configurations. No exact-ID
+rearm requirement was bypassed. This narrow integration gate is complete;
+At this correction's closeout Phase 6 remained IN PROGRESS; final acceptance below
+subsequently completed its separate remaining gates.
+
+## D-040 — Phase 6 V0 final acceptance and presentation freeze
+
+2026-10-02: user completed and accepted final human review. Phase 6 is PASS for V0.
+D-036 Rail and D-037 offscreen-retained bounded semantic session remain the product
+model: newest Expanded, prior Compact/overflow, exact same-ID anchor reattachment,
+stable per-epoch ordinals. Earlier scroll-out retirement/no-resurrection is superseded
+only for HUD lifetime, not Observer identity guarantees. D-038/D-039 corrections are
+accepted and frozen; no further perception research or semantic changes are needed.
+
+Real evidence confirms Self push without semantic scheduling, deliberate epoch
+switch clearing/reset, real Alt-Tab/minimize restoration, correct two-direction DPI
+association, no focus theft/click interception, and actual marker-free RenderWindow
+capture. Final five Remote targets each had one NEW/request/keyed Ready, stable
+ordinals 3–7, latest Expanded, zero Adaptive fallback. Five-sample detection-to-Ready
+median/max 656.9/923.7ms; TypeSafe roundtrip 398.2/627.8ms. Full native suite 357 PASS,
+0 failed/skipped; format/build PASS. Details and timing limitations in PHASE6_HUD.md.
+
+Accepted historical re-identification, clipped-width false negatives, residual OCR
+risk, limited quotes, probabilistic uncalibrated judgments and bounded queue skips
+remain limitations, not new guarantees. No raw chat/API persistence, replies,
+input injection, mouse interaction or profiles introduced. PR #7 becomes Ready for
+review; merge remains a separate user decision. Stop Phase 6 work here.
