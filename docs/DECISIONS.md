@@ -1137,5 +1137,13 @@ Automated replay asserts unchanged epoch/timeline, preserved tail, zero transiti
 NEW, then one fresh post-stability append. Windows format/verify and full build
 passed (0 warnings/errors). All 357 .NET tests passed, 0 failed/skipped, including
 185 Observer tests; D-025, D-029/D-030 and D-038 regressions remain green.
-Real 144→96 and 96→144 pre-send identity
-checks and Remote→Jev→HUD checks remain pending. Phase 6 is IN PROGRESS.
+Native retest on 2026-10-02 (`1d89664`) passed both directions in epoch 2:
+144→96 retained complete previous-visible m3–m6 in order, re-armed saved tail m6,
+then Remote m10 was LiveNew exactly once. The expanded viewport discovered older
+history before the retained sequence, not a replacement tail placeholder.
+96→144 retained all six visible IDs, allocated zero History IDs and re-armed m10;
+Remote m11 was LiveNew exactly once. Both requests succeeded once and rendered
+same-key Ready HUDs, with zero Adaptive fallback. m11 was Expanded ordinal 2 and
+m10 Compact ordinal 1. Capture audit verified both configurations. No exact-ID
+rearm requirement was bypassed. This narrow integration gate is complete;
+Phase 6 remains IN PROGRESS pending its separate final acceptance gates.

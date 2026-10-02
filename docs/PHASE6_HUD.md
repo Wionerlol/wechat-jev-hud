@@ -16,14 +16,24 @@ After two stable observations, exact reconciled tail-ID continuity in the same e
 can re-arm eligibility for the next append. This does not modify append predicates.
 Opt-in HUD append diagnostics also emit redacted `live_edge_transition` records:
 State, Epoch, SavedTailId, CurrentTailId, LayoutStableCount and Reason.
-The 96→144→96→144 real Remote-message retest is still pending; Phase 6 is not PASS.
+The original reverse-direction retest exposed the D-039 occurrence defect below;
+the corrected two-direction gate has passed. Phase 6 is not PASS.
 D-039 corrects mixed-cache history anchoring during a pure rerender only. It requires
 known pre-transition live-tail intent, accepted identity, unique visual transform
 anchors and bottom-preserving geometry, then gives previous-visible ordered IDs
 precedence over whole-history cache search. The independent D-038 exact tail-ID
 gate is not relaxed. Opt-in `layout_reconciliation` diagnostics contain fingerprints,
 geometry/cost, evidence flags and final mappings, never message text.
-Two-direction real retest remains required; no unrelated Phase 6 work is authorized.
+Two-direction native retest passed on 2026-10-02 (`1d89664`): epoch 2 stayed
+unchanged, saved tails m6 (144→96) and m10 (96→144) retained their exact logical
+IDs and re-armed after stability. Subsequent Remote m10/m11 each emitted LiveNew
+once, scheduled one successful Jev request and rendered same-key Ready results.
+The reverse move allocated no History IDs; the move to the taller 96-DPI viewport
+discovered older history before the preserved complete sequence. Capture audit
+verified both configurations; fallback count remained zero. m11 rendered Expanded
+ordinal 2, with m10 Compact ordinal 1. OCR was 20.1/27.1ms; Jev roundtrip was
+766.1/665.5ms. These are runtime traces, not a substitute for remaining visual
+acceptance. No unrelated Phase 6 work is authorized by this narrow correction.
 App's background `HudRuntimeCoordinator` runs capture/Observer and submits eligible
 targets to the existing asynchronous Jev coordinator. Overlay consumes typed results,
 never console text. Observer and TypeSafe have no Overlay/WPF references.

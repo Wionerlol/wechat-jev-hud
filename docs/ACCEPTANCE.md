@@ -914,9 +914,22 @@ Create a small manually inspectable evaluation fixture set. The goal is not "100
 - [x] Layout-time scroll rejection and existing history/append/D-038 suites pass.
 - [x] Windows format/verify and full build (0 warnings/errors); all 357 .NET tests
       passed, 0 failed/skipped, including 185 Observer tests.
-- [ ] Real 144→96 preserves previous-visible IDs before sending; subsequent Remote
+- [x] Real 144→96 preserves complete previous-visible IDs before sending; subsequent Remote
       is one LiveNew, one Jev request and one keyed Ready HUD.
-- [ ] Real 96→144 passes the same pre-send identity and subsequent-message gate.
+- [x] Real 96→144 passes the same pre-send identity and subsequent-message gate.
+
+Native evidence on 2026-10-02, implementation commit `1d89664`: epoch 2 stayed
+unchanged. At 144→96, m3–m6 retained ordered occurrences and saved tail m6 re-armed
+after two stable observations. The larger visible history area discovered three
+older History entries before those occurrences; none replaced the saved tail.
+Remote m10 then emitted exactly once (`anchored_translated_suffix`, -97px), with
+semantic_ready=true, one successful Jev request and same-key Pending→Ready render.
+At 96→144, all six visible occurrences retained IDs, zero History IDs were created,
+and tail m10 re-armed. Remote m11 emitted once (-84px), with one successful Jev
+request and Ready ordinal 2 Expanded; m10 remained ordinal 1 Compact. Both capture
+configurations verified RenderWindow; Adaptive fallback stayed zero. OCR durations
+were 20.1/27.1ms and TypeSafe roundtrips 766.1/665.5ms respectively. This records
+native trace evidence; it does not replace remaining Phase 6 visual acceptance.
 
 D-038's exact tail-ID fail-closed requirement remains unchanged. No Phase 6 PASS yet.
 
@@ -932,7 +945,8 @@ D-038's exact tail-ID fail-closed requirement remains unchanged. No Phase 6 PASS
       message must be LiveNew exactly once, with one Jev schedule and HUD item.
 
 This is an authorized narrow integration correction, not a reopening of Phase 4.5.
-Phase 6 remains IN PROGRESS; PR #7 stays Draft until the real gate passes.
+The failed reverse-direction gate was subsequently repaired and passed with D-039
+above. Phase 6 remains IN PROGRESS; PR #7 stays Draft pending its remaining gates.
 
 **Status: IN PROGRESS — implementation available; native/manual acceptance pending.**
 Detailed architecture, commands and evidence: [PHASE6_HUD.md](PHASE6_HUD.md), D-033.
